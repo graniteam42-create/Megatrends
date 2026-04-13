@@ -2,11 +2,19 @@ import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function getAnthropic() {
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY is not configured. Add it to your environment variables.");
+  }
+  return new Anthropic({ apiKey });
 }
 
 function getGemini() {
-  return new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured. Add it to your environment variables.");
+  }
+  return new GoogleGenerativeAI(apiKey);
 }
 
 export async function callAI(

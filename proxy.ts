@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const authCookie = request.cookies.get("tc_auth");
 
-  if (!authCookie?.value && !request.nextUrl.pathname.startsWith("/login") && !request.nextUrl.pathname.startsWith("/api/auth")) {
+  if (!authCookie?.value && !request.nextUrl.pathname.startsWith("/login") && !request.nextUrl.pathname.startsWith("/api/")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
