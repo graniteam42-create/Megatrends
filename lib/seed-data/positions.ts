@@ -16,10 +16,7 @@ const TIER_1: Position[] = [
 ];
 
 const TIER_2: Position[] = [
-  { tier: 2, dir: "LONG", ticker: "U3O8", name: "HANetf Sprott Uranium Miners UCITS", type: "Miners ETF", fee: "~0.85%", trends: ["t3","t7","t1"], conv: 88,
-    why: "Pure-play uranium miners. Buy when selloff widens gap vs commodity price.",
-    when: "VIX > 30 or S&P -15%", status: "WAIT", corr: "Equity-correlated" },
-  { tier: 2, dir: "LONG", ticker: "WNUC", name: "WisdomTree Uranium & Nuclear", type: "Sector ETF", fee: "0.47%", trends: ["t3","t1"], conv: 85,
+  { tier: 2, dir: "LONG", ticker: "WNUC", name: "WisdomTree Uranium & Nuclear", type: "Sector ETF", fee: "0.47%", trends: ["t3","t7","t1"], conv: 88,
     why: "Broader nuclear incl. GE Vernova, Curtiss-Wright. Lower fee, more diversified.",
     when: "On correction", status: "WAIT", corr: "Equity-correlated" },
   { tier: 2, dir: "LONG", ticker: "IXJ", name: "iShares Global Healthcare", type: "Sector ETF", fee: "0.40%", trends: ["t5","t8"], conv: 82,
@@ -46,24 +43,9 @@ const TIER_3: Position[] = [
 ];
 
 const TIER_4: Position[] = [
-  { tier: 4, dir: "LONG", ticker: "WRNA", name: "WisdomTree BioRevolution UCITS", type: "Thematic", fee: "~0.40%", trends: ["t8","t1"], conv: 68,
-    why: "Synthetic Biology in ETF form. Nascent stage — expect high volatility.",
-    when: "VIX > 35, max 1-3%", status: "WAIT", corr: "Equity-correlated" },
   { tier: 4, dir: "LONG", ticker: "IBIT", name: "iShares Bitcoin ETF / 21Shares", type: "Crypto", fee: "0.25-1.5%", trends: ["t2","t6"], conv: 55,
     why: "In theory a hard asset hedge. Currently correlates with risk assets in every selloff.",
     when: "Dollar-cost average, small", status: "APPROACHING", corr: "Risk-correlated" },
-  { tier: 4, dir: "SHORT", ticker: "3TYS", name: "WisdomTree 3x Short US 10Y (EU)", type: "Inverse ETP", fee: "0.75%+", trends: ["t2"], conv: 72,
-    why: "Core Trade short leg. 3x daily reset decay eats you alive if held long-term. Tactical only.",
-    when: "Open now, very small", status: "GO", corr: "Anti-bond" },
-  { tier: 4, dir: "SHORT", ticker: "Bear Certs", name: "Avanza Markets bear certificates on Nasdaq/S&P", type: "Certificate", fee: "Spread only", trends: ["t1"], conv: 68,
-    why: "PRIIPs blocks all US inverse ETFs. Bear certs via Avanza Markets are courtage-free.",
-    when: "Tactical around Q3-Q4 2026", status: "WAIT", corr: "Inverse" },
-  { tier: 4, dir: "HEDGE", ticker: "XBJA", name: "WisdomTree Long CHF Short EUR", type: "Currency", fee: "0.39%", trends: ["t2","t4"], conv: 58,
-    why: "Swiss Franc strengthens in crisis. Cheap hedge — holds value in calm, profits in turmoil.",
-    when: "Buy now as small hedge", status: "GO", corr: "Anti-correlated" },
-  { tier: 4, dir: "HEDGE", ticker: "WTMF", name: "WisdomTree Managed Futures / Lynx Dynamic", type: "Alternative", fee: "0.65-1.5%", trends: [], conv: 60,
-    why: "Uncorrelated returns in any direction. Buy hedges in calm markets, not during the crisis.",
-    when: "Buy now", status: "GO", corr: "Uncorrelated" },
 ];
 
 export const POSITIONS: Position[] = [...TIER_1, ...TIER_2, ...TIER_3, ...TIER_4];

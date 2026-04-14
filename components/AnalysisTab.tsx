@@ -215,7 +215,7 @@ export default function AnalysisTab({
               setSuggestions([]);
               try {
                 const data = await callAPI(
-                  "Suggest 5 NEW mega-trends NOT in the user's current list. Return a JSON array of 5 objects, each with: name, description, thesis, bearCase, investmentMap, confidence (0-100), mispricingScore (0-100), subTrends (string array), stage (0-4), horizon (string). Return ONLY valid JSON, no markdown fences.",
+                  "Suggest 5 NEW mega-trends NOT in the user's current list. IMPORTANT: For investmentMap tickers, strongly prefer tickers available on EODHD (US-listed stocks and ETFs, or major EU-listed ETFs on XETRA/LSE). Avoid obscure EU instruments, certificates, or tickers unlikely to have price data. Return a JSON array of 5 objects, each with: name, description, thesis, bearCase, investmentMap, confidence (0-100), mispricingScore (0-100), subTrends (string array), stage (0-4), horizon (string). Return ONLY valid JSON, no markdown fences.",
                   "Current trends: " + trends.map((t) => t.name).join(", "),
                   "scan"
                 );

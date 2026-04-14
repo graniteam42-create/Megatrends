@@ -280,7 +280,6 @@ const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = {
   'WSLV': { symbol: 'WSLV', exchange: 'XETRA' },   // WisdomTree Core Physical Silver
   
   // Miner/Sector ETFs
-  'U3O8': { symbol: 'U3O8', exchange: 'LSE' },     // HANetf Sprott Uranium Miners
   'WNUC': { symbol: 'WNUC', exchange: 'XETRA' },  // WisdomTree Uranium & Nuclear
   'IXJ':  { symbol: 'IXJ', exchange: 'US' },       // iShares Global Healthcare
   'RARE': { symbol: 'RARE', exchange: 'XETRA' },   // WisdomTree Strategic Metals
@@ -291,9 +290,8 @@ const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = {
   'CCJ':  { symbol: 'CCJ', exchange: 'US' },
   'NXE':  { symbol: 'NXE', exchange: 'US' },
   
-  // Shorts & Hedges
-  '3TYS': { symbol: '3TYS', exchange: 'XETRA' },  // WisdomTree 3x Short 10Y
-  'XBJA': { symbol: 'XBJA', exchange: 'XETRA' },  // WisdomTree Long CHF Short EUR
+  // Crypto
+  'IBIT': { symbol: 'IBIT', exchange: 'US' },      // iShares Bitcoin ETF
   
   // === CRASH WATCHLIST ===
   'NVDA': { symbol: 'NVDA', exchange: 'US' },
@@ -324,6 +322,7 @@ const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = {
 3. Don't hardcode prices — always fetch from EODHD
 4. Don't use SQLite — Vercel serverless doesn't support persistent filesystem
 5. Don't skip the EODHD ticker verification step — EU ETCs often have different tickers
+8. Don't add positions with tickers unavailable on EODHD — all positions must have live price data. Prefer US-listed stocks/ETFs or major XETRA/LSE ETFs with confirmed EODHD coverage. AI suggestions should also prefer EODHD-available tickers
 6. Don't send all AI calls to the same model — use the tier routing (scan→Gemini, synthesis→Claude)
 7. Don't use Opus or GPT-5 Pro — overkill for this use case, Sonnet and Gemini Pro are optimal
 

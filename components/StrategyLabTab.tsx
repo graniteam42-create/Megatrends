@@ -93,7 +93,7 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: "Suggest 5 NEW mega-trends not in the user's current list. Return ONLY a valid JSON array (no markdown fences, no explanation before or after) of objects with these exact fields: name (string), thesis (string, 2-3 sentences), keyTickers (string, comma-separated ticker symbols with brief descriptions in parentheses), whyMispriced (string, 2-3 sentences on why the market is missing this).",
+          system: "Suggest 5 NEW mega-trends not in the user's current list. IMPORTANT: For keyTickers, strongly prefer tickers available on EODHD (US-listed stocks and ETFs, or major EU-listed ETFs on XETRA/LSE). Avoid obscure EU instruments, certificates, or tickers unlikely to have price data on EODHD. Return ONLY a valid JSON array (no markdown fences, no explanation before or after) of objects with these exact fields: name (string), thesis (string, 2-3 sentences), keyTickers (string, comma-separated ticker symbols with brief descriptions in parentheses), whyMispriced (string, 2-3 sentences on why the market is missing this).",
           prompt: "Current trends: " + trends.map((t) => t.name).join(", "),
           tier: "scan",
         }),
@@ -146,7 +146,7 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
       onClick: () =>
         runAI(
           "Full Synthesis",
-          "Synthesize mega-trends into positions. Use markdown ## headers for each section. Use bullet points. Be concise and specific with tickers.",
+          "Synthesize mega-trends into positions. Use markdown ## headers for each section. Use bullet points. Be concise and specific with tickers. Prefer tickers available on EODHD (US-listed stocks/ETFs, major XETRA/LSE ETFs). Avoid obscure instruments without price data.",
           `Trends:\n${trends.map((t) => `${t.name} [${STAGES[t.stage]}] ${t.confidence}%\nThesis: ${t.thesis}\nInvestments: ${t.investmentMap || "N/A"}`).join("\n\n")}\n\nReturn these sections:\n## Top 5 Asymmetric Plays\n## Asset Class Positioning\n## Physical vs Equity Split\n## Hedges by Scenario\n## Timing & Entry Points\n## Key Risks`,
           "synthesis"
         ),
