@@ -61,6 +61,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0c10] flex font-mono relative overflow-hidden">
+      {/* Loading state while artwork loads */}
+      {!imgLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="inline-block w-5 h-5 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
+        </div>
+      )}
+
       {/* Full artwork background - high visibility */}
       {art && (
         <>
@@ -79,7 +86,7 @@ export default function LoginPage() {
       )}
 
       {/* Left-aligned form */}
-      <div className="relative z-10 flex flex-col justify-center px-12 py-16 w-full max-w-md">
+      <div className="relative z-10 flex flex-col justify-center px-12 py-16 w-full max-w-md transition-opacity duration-700" style={{ opacity: imgLoaded ? 1 : 0 }}>
         <form onSubmit={handleSubmit} className="bg-[#111827]/80 backdrop-blur-md border border-[#1e293b] rounded-xl p-8">
           <h1 className="text-[#00e5ff] text-xl font-bold tracking-wider mb-1">TREND COMPASS</h1>
           <p className="text-[#94a3b8] text-xs tracking-widest uppercase mb-6">Strategic Intelligence System</p>
