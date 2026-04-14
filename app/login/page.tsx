@@ -73,15 +73,13 @@ export default function LoginPage() {
         <>
           <img
             src={art.imageUrl}
-            alt=""
+            alt={art.title}
             onLoad={() => setImgLoaded(true)}
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ opacity: imgLoaded ? 0.8 : 0, transition: "opacity 1.5s ease-in" }}
+            className="absolute right-0 top-0 h-full object-contain object-right"
+            style={{ opacity: imgLoaded ? 1 : 0, transition: "opacity 1.5s ease-in", maxWidth: "65%" }}
           />
-          {/* Gradient only on the left 40% where the form sits */}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #0a0c10 25%, #0a0c10cc 35%, transparent 55%)" }} />
-          {/* Subtle vignette at very top and bottom edges only */}
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, #0a0c10 0%, transparent 15%, transparent 85%, #0a0c10 100%)" }} />
+          {/* Soft edge blend where image meets the dark left side */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #0a0c10 30%, #0a0c10 32%, transparent 45%)" }} />
         </>
       )}
 
