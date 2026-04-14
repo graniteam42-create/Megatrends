@@ -75,6 +75,7 @@ export default function TrendCompass() {
   // Load cached prices from localStorage (manual refresh only)
   const [pricesDate, setPricesDate] = useState("");
   const [pricesRefreshing, setPricesRefreshing] = useState(false);
+  const [pricesMessage, setPricesMessage] = useState("");
 
   useEffect(() => {
     // Merge cached live prices on top of hardcoded defaults
@@ -86,7 +87,13 @@ export default function TrendCompass() {
   }, []);
 
   async function refreshPrices() {
+    if (pricesDate === today()) {
+      setPricesMessage("Latest prices already fetched");
+      setTimeout(() => setPricesMessage(""), 3000);
+      return;
+    }
     setPricesRefreshing(true);
+    setPricesMessage("");
     try {
       const [priceRes, perfRes] = await Promise.all([
         fetch("/api/prices"),
@@ -111,22 +118,34 @@ export default function TrendCompass() {
 
   return (
     <div className="font-sans bg-[#0a0c10] text-[#e0e4ec] min-h-screen">
-      {/* Header */}
-      <div className="bg-gradient-to-br from-[#0d1117] to-[#111827] border-b border-[#1e293b] px-7 pt-6 pb-5 relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_100%_at_20%_0%,rgba(0,229,255,0.08),transparent_70%)]" />
-        <div className="flex justify-between items-center relative">
-          <div>
-            <h1 className="font-mono text-[32px] font-bold tracking-wider text-[#00e5ff]">TREND COMPASS</h1>
-            <p className="text-sm text-[#94a3b8] tracking-[0.2em] uppercase mt-1">Macro Trend Tracker</p>
+      {/* Header with compass banner */}
+      <div className="border-b border-[#1e293b] relative overflow-hidden">
+        <img
+          src="/compass-banner.svg"
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0d1117] via-[#0d1117cc] to-[#0d111700] pointer-events-none" />
+        <div className="relative px-7 pt-7 pb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="font-mono text-[32px] font-bold tracking-wider text-[#00e5ff] drop-shadow-[0_0_12px_rgba(0,229,255,0.3)]">TREND COMPASS</h1>
+              <p className="text-sm text-[#cbd5e1] tracking-[0.2em] uppercase mt-1">Macro Trend Tracker</p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <button
+                onClick={refreshPrices}
+                disabled={pricesRefreshing}
+                className="flex items-center gap-2 px-4 py-2 rounded-md border border-[#334155] bg-[#0d1117]/80 backdrop-blur-sm text-[12px] font-mono text-[#cbd5e1] hover:text-[#e0e4ec] hover:border-[#00e5ff66] hover:bg-[#0d1117] transition-colors disabled:opacity-50"
+              >
+                <span className={pricesRefreshing ? "animate-spin" : ""}>&#x21bb;</span>
+                {pricesRefreshing ? "Refreshing..." : pricesDate ? `Prices: ${pricesDate}` : "Fetch Prices"}
+              </button>
+              {pricesMessage && (
+                <span className="text-[11px] font-mono text-[#ffea00] animate-fadeIn">{pricesMessage}</span>
+              )}
+            </div>
           </div>
-          <button
-            onClick={refreshPrices}
-            disabled={pricesRefreshing}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[#1e293b] bg-white/[0.04] text-[12px] font-mono text-[#94a3b8] hover:text-[#e0e4ec] hover:border-[#00e5ff44] transition-colors disabled:opacity-50"
-          >
-            <span className={pricesRefreshing ? "animate-spin" : ""}>&#x21bb;</span>
-            {pricesRefreshing ? "Refreshing..." : pricesDate ? `Prices: ${pricesDate}` : "Fetch Prices"}
-          </button>
         </div>
       </div>
 
