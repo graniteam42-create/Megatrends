@@ -62,12 +62,14 @@ export default function TrendCompass() {
     });
   }, []);
 
-  // AI state (shared across all tabs)
+  // AI modal state (shared across all tabs)
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState("");
   const [aiModel, setAiModel] = useState("");
+  const [aiModalTitle, setAiModalTitle] = useState("");
 
-  async function runAI(system: string, prompt: string, tier: "scan" | "synthesis") {
+  async function runAI(title: string, system: string, prompt: string, tier: "scan" | "synthesis") {
+    setAiModalTitle(title);
     setAiLoading(true);
     setAiResult("");
     try {
@@ -86,6 +88,27 @@ export default function TrendCompass() {
     }
   }
 
+  function renderAIResult(text: string) {
+    return text.split("\n").map((line, i) => {
+      if (line.match(/^#{1,3}\s/)) {
+        const clean = line.replace(/^#+\s*/, "").replace(/\*\*/g, "");
+        return <h4 key={i} className="text-[14px] font-bold text-[#00e5ff] mt-5 mb-2 pb-1 border-b border-[#1e293b]">{clean}</h4>;
+      }
+      if (line.match(/^\*\*[^*]+\*\*/)) {
+        return <h4 key={i} className="text-[13px] font-bold text-[#e0e4ec] mt-4 mb-1">{line.replace(/\*\*/g, "")}</h4>;
+      }
+      if (line.match(/^\d+\.\s/)) {
+        const num = line.match(/^(\d+)\.\s(.*)/)!;
+        return <div key={i} className="flex gap-2 mb-2 ml-1"><span className="text-[#00e5ff] font-mono font-bold shrink-0">{num[1]}.</span><span className="text-[13px] text-[#cbd5e1]">{num[2]}</span></div>;
+      }
+      if (line.startsWith("- ") || line.startsWith("* ")) {
+        return <li key={i} className="text-[13px] text-[#cbd5e1] ml-4 mb-1.5 list-disc">{line.slice(2)}</li>;
+      }
+      if (line.trim() === "") return <div key={i} className="h-2" />;
+      return <p key={i} className="text-[13px] text-[#cbd5e1] mb-1 leading-relaxed">{line}</p>;
+    });
+  }
+
   const aiCards = [
     {
       icon: "\uD83D\uDCCA",
@@ -93,8 +116,9 @@ export default function TrendCompass() {
       desc: "Trends into positions",
       onClick: () =>
         runAI(
-          "Synthesize mega-trends into positions. Specific tickers, timing, sizing.",
-          `Trends:\n${trends.map((t) => `${t.name} [${STAGES[t.stage]}] ${t.confidence}%\nThesis: ${t.thesis}\nInvestments: ${t.investmentMap || "N/A"}`).join("\n\n")}\n\n1. Top 5 asymmetric plays (tickers)\n2. Asset class positioning\n3. Physical vs equity\n4. Hedges per scenario\n5. Timing\n6. Risks`,
+          "Full Synthesis",
+          "Synthesize mega-trends into positions. Use markdown ## headers for each section. Use bullet points. Be concise and specific with tickers.",
+          `Trends:\n${trends.map((t) => `${t.name} [${STAGES[t.stage]}] ${t.confidence}%\nThesis: ${t.thesis}\nInvestments: ${t.investmentMap || "N/A"}`).join("\n\n")}\n\nReturn these sections:\n## Top 5 Asymmetric Plays\n## Asset Class Positioning\n## Physical vs Equity Split\n## Hedges by Scenario\n## Timing & Entry Points\n## Key Risks`,
           "synthesis"
         ),
     },
@@ -104,8 +128,9 @@ export default function TrendCompass() {
       desc: "Emerging trends not on radar",
       onClick: () =>
         runAI(
-          "Suggest 5 NEW mega-trends with specific tickers and mispricing scores.",
-          "Current: " + trends.map((t) => t.name).join(", "),
+          "Discover Trends",
+          "Suggest 5 NEW mega-trends. Use markdown ## for each trend name. Under each, bullet points for: thesis, key tickers, why mispriced. Be concise.",
+          "Current trends: " + trends.map((t) => t.name).join(", "),
           "scan"
         ),
     },
@@ -115,8 +140,9 @@ export default function TrendCompass() {
       desc: "Find flaws and blind spots",
       onClick: () =>
         runAI(
-          "Contrarian analyst. Challenge aggressively. Be specific.",
-          `${trends.map((t) => `${t.name} [${STAGES[t.stage]}] ${t.confidence}%\nThesis: ${t.thesis}\nBear: ${t.bearCase || "N/A"}`).join("\n\n")}\n\n1. Which WRONG?\n2. Missing?\n3. Contradictions?\n4. Biggest risk?\n5. Bet AGAINST which?`,
+          "Challenge Framework",
+          "Contrarian analyst. Challenge aggressively. Use markdown ## headers for each section. Bullet points. Be specific with tickers and numbers.",
+          `${trends.map((t) => `${t.name} [${STAGES[t.stage]}] ${t.confidence}%\nThesis: ${t.thesis}\nBear: ${t.bearCase || "N/A"}`).join("\n\n")}\n\nReturn these sections:\n## Trends Most Likely Wrong\n## Blind Spots & Missing Trends\n## Internal Contradictions\n## Biggest Single Risk\n## Bet Against (specific tickers to short)`,
           "synthesis"
         ),
     },
@@ -229,20 +255,30 @@ export default function TrendCompass() {
 
       {/* Content */}
       <div className="px-7 py-6 max-w-[1400px] mx-auto">
-        {/* AI loading/result panel - shown on all tabs when active */}
-        {aiLoading && (
-          <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-8 text-center animate-pulse mb-5">
-            <div className="inline-block w-4 h-4 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
-            <p className="mt-3 text-[13px] text-[#0ea5e9]">Analyzing...</p>
-          </div>
-        )}
-        {aiResult && !aiLoading && (
-          <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-5 mb-5 animate-fadeIn">
-            <div className="flex justify-between items-center">
-              <span className="text-[11px] text-[#00e676] font-mono font-semibold">ANALYSIS{aiModel ? ` via ${aiModel}` : ""}</span>
-              <button onClick={() => setAiResult("")} className="text-[11px] text-[#475569] hover:text-[#94a3b8] font-mono">Dismiss</button>
+        {/* AI Modal */}
+        {(aiLoading || aiResult) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0c10]/80 backdrop-blur-sm" onClick={() => !aiLoading && setAiResult("")}>
+            <div className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="sticky top-0 bg-[#111827] border-b border-[#1e293b] px-6 py-4 flex justify-between items-center z-10">
+                <div>
+                  <h3 className="text-[15px] font-bold text-[#00e5ff]">{aiModalTitle}</h3>
+                  {aiModel && <span className="text-[11px] text-[#475569] font-mono">via {aiModel}</span>}
+                </div>
+                {!aiLoading && (
+                  <button onClick={() => setAiResult("")} className="text-[#64748b] hover:text-[#e0e4ec] text-lg px-2">X</button>
+                )}
+              </div>
+              <div className="px-6 py-5">
+                {aiLoading ? (
+                  <div className="py-12 text-center">
+                    <div className="inline-block w-5 h-5 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
+                    <p className="mt-3 text-[13px] text-[#0ea5e9]">Analyzing...</p>
+                  </div>
+                ) : (
+                  renderAIResult(aiResult)
+                )}
+              </div>
             </div>
-            <div className="mt-3 text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{aiResult}</div>
           </div>
         )}
 
