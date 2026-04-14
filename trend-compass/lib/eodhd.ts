@@ -42,3 +42,35 @@ export async function fetchAllPrices(): Promise<Record<string, PriceData>> {
 
   return results;
 }
+
+function formatDate(d: Date): string {
+  return d.toISOString().split("T")[0];
+}
+
+export async function fetchHistoricalPerformance(
+  ticker: string,
+  days: number
+): Promise<number | null> {
+  if (!API_KEY) return null;
+  const mapping = TICKER_MAP[ticker];
+  if (!mapping) return null;
+
+  const to = new Date();
+  const from = new Date();
+  from.setDate(from.getDate() - Math.ceil(days * 1.6));
+
+  const url = `${BASE}/eod/${mapping.symbol}.${mapping.exchange}?from=${formatDate(from)}&to=${formatDate(to)}&period=d&api_token=${API_KEY}&fmt=json`;
+  try {
+    const res = await fetch(url, { next: { revalidate: 3600 } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length < 2) return null;
+    const latest = data[data.length - 1].close;
+    const pastIdx = Math.max(0, data.length - days);
+    const past = data[pastIdx].close;
+    if (typeof latest !== "number" || typeof past !== "number" || past === 0) return null;
+    return ((latest - past) / past) * 100;
+  } catch {
+    return null;
+  }
+}

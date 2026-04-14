@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Trend, PriceData } from "@/lib/types";
 import { SEED_TRENDS, STAGES } from "@/lib/seed-data";
 import LandscapeTab from "./LandscapeTab";
@@ -15,12 +15,45 @@ const TABS = [
   { id: "lab", label: "Strategy Lab" },
 ];
 
+const LS_TRENDS = "tc_trends";
+const LS_SCANS = "tc_scans";
+
+function loadLS<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return fallback;
+}
+
+function saveLS(key: string, data: unknown) {
+  try { localStorage.setItem(key, JSON.stringify(data)); } catch {}
+}
+
 export default function TrendCompass() {
   const [tab, setTab] = useState("landscape");
-  const [trends, setTrends] = useState<Trend[]>(SEED_TRENDS);
-  const [scans, setScans] = useState<Record<string, { result: string; ts: string; model?: string }>>({});
+  const [trends, setTrendsRaw] = useState<Trend[]>(SEED_TRENDS);
+  const [scans, setScansRaw] = useState<Record<string, { result: string; ts: string; model?: string }>>({});
   const [prices, setPrices] = useState<Record<string, PriceData>>({});
+  const [performance, setPerformance] = useState<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }>>({});
   const [ready, setReady] = useState(false);
+
+  const setTrends: typeof setTrendsRaw = useCallback((v) => {
+    setTrendsRaw((prev) => {
+      const next = typeof v === "function" ? v(prev) : v;
+      saveLS(LS_TRENDS, next);
+      return next;
+    });
+  }, []);
+
+  const setScans: typeof setScansRaw = useCallback((v) => {
+    setScansRaw((prev) => {
+      const next = typeof v === "function" ? v(prev) : v;
+      saveLS(LS_SCANS, next);
+      return next;
+    });
+  }, []);
 
   // AI state (shared across all tabs)
   const [aiLoading, setAiLoading] = useState(false);
@@ -82,40 +115,14 @@ export default function TrendCompass() {
     },
   ];
 
-  // Load persisted data
+  // Load persisted data from localStorage (survives deploys), fallback to server
   useEffect(() => {
-    (async () => {
-      try {
-        const [tRes, sRes] = await Promise.all([
-          fetch("/api/trends"),
-          fetch("/api/scans"),
-        ]);
-        if (tRes.ok) { const data = await tRes.json(); if (Array.isArray(data) && data.length) setTrends(data); }
-        if (sRes.ok) { const data = await sRes.json(); if (data && typeof data === "object") setScans(data); }
-      } catch {}
-      setReady(true);
-    })();
+    const lsTrends = loadLS<Trend[] | null>(LS_TRENDS, null);
+    const lsScans = loadLS<Record<string, { result: string; ts: string; model?: string }> | null>(LS_SCANS, null);
+    if (lsTrends && lsTrends.length) setTrendsRaw(lsTrends);
+    if (lsScans) setScansRaw(lsScans);
+    setReady(true);
   }, []);
-
-  // Persist trends
-  useEffect(() => {
-    if (!ready) return;
-    fetch("/api/trends", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(trends),
-    }).catch(() => {});
-  }, [trends, ready]);
-
-  // Persist scans
-  useEffect(() => {
-    if (!ready) return;
-    fetch("/api/scans", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(scans),
-    }).catch(() => {});
-  }, [scans, ready]);
 
   // Fetch prices
   useEffect(() => {
@@ -123,6 +130,11 @@ export default function TrendCompass() {
     load();
     const interval = setInterval(load, 5 * 60 * 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch historical performance (20d/60d) - less frequently
+  useEffect(() => {
+    fetch("/api/performance").then((r) => r.json()).then(setPerformance).catch(() => {});
   }, []);
 
   return (
@@ -191,7 +203,7 @@ export default function TrendCompass() {
           </div>
         )}
 
-        {tab === "landscape" && <LandscapeTab trends={trends} onSwitchTab={setTab} />}
+        {tab === "landscape" && <LandscapeTab trends={trends} onSwitchTab={setTab} performance={performance} />}
         {tab === "analysis" && <AnalysisTab trends={trends} setTrends={setTrends} scans={scans} setScans={setScans} />}
         {tab === "positions" && <PositionsTab trends={trends} prices={prices} />}
         {tab === "lab" && <StrategyLabTab trends={trends} />}
