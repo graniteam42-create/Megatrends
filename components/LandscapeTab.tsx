@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { Trend } from "@/lib/types";
 import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS, TREND_IMAGES } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
@@ -34,7 +34,7 @@ export default function LandscapeTab({
     else { setSortCol(col); setSortDir("desc"); }
   }
 
-  const sorted = [...trends].sort((a, b) => {
+  const sorted = useMemo(() => [...trends].sort((a, b) => {
     let va: number | string, vb: number | string;
     switch (sortCol) {
       case "name": va = a.name; vb = b.name; break;
@@ -48,7 +48,7 @@ export default function LandscapeTab({
     }
     const cmp = typeof va === "string" ? va.localeCompare(vb as string) : (va as number) - (vb as number);
     return sortDir === "asc" ? cmp : -cmp;
-  });
+  }), [trends, sortCol, sortDir, performance]);
 
   const cols: { key: string; label: string; tip?: string }[] = [
     { key: "name", label: "Name" },

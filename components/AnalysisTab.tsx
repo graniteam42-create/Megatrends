@@ -11,9 +11,13 @@ interface ScanData {
   model?: string;
 }
 
-function parseAIJson(text: string) {
-  const clean = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-  return JSON.parse(clean);
+function parseAIJson(text: string): Record<string, unknown> | unknown[] | null {
+  try {
+    const clean = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    return JSON.parse(clean);
+  } catch {
+    return null;
+  }
 }
 
 export default function AnalysisTab({
@@ -105,22 +109,28 @@ export default function AnalysisTab({
         return;
       }
       const parsed = parseAIJson(data.result);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        setResearchPhase("idle");
+        setResult("AI returned invalid format. Try again.\n\nRaw response:\n" + data.result);
+        return;
+      }
+      const p = parsed as Record<string, unknown>;
       setNf({
         name: nf.name,
-        description: parsed.description || "",
-        thesis: parsed.thesis || "",
-        bearCase: parsed.bearCase || "",
-        investmentMap: parsed.investmentMap || "",
-        confidence: parsed.confidence ?? 50,
-        mispricingScore: parsed.mispricingScore ?? 50,
-        subTrends: Array.isArray(parsed.subTrends) ? parsed.subTrends.join(", ") : (parsed.subTrends || ""),
-        stage: parsed.stage ?? 0,
-        horizon: parsed.horizon || "2-5 years",
+        description: (p.description as string) || "",
+        thesis: (p.thesis as string) || "",
+        bearCase: (p.bearCase as string) || "",
+        investmentMap: (p.investmentMap as string) || "",
+        confidence: typeof p.confidence === "number" ? Math.min(100, Math.max(0, p.confidence)) : 50,
+        mispricingScore: typeof p.mispricingScore === "number" ? Math.min(100, Math.max(0, p.mispricingScore)) : 50,
+        subTrends: Array.isArray(p.subTrends) ? p.subTrends.join(", ") : ((p.subTrends as string) || ""),
+        stage: typeof p.stage === "number" && p.stage >= 0 && p.stage <= 4 ? p.stage : 0,
+        horizon: (p.horizon as string) || "2-5 years",
       });
 
       // Now get assessment
       setResearchPhase("assessing");
-      const fieldsSummary = `Trend: ${nf.name}\nDescription: ${parsed.description}\nThesis: ${parsed.thesis}\nBear Case: ${parsed.bearCase}\nInvestment Map: ${parsed.investmentMap}\nConfidence: ${parsed.confidence}%\nMispricing Score: ${parsed.mispricingScore}\nSub-Trends: ${Array.isArray(parsed.subTrends) ? parsed.subTrends.join(", ") : parsed.subTrends}\nStage: ${STAGES[parsed.stage] || "Unknown"}\nHorizon: ${parsed.horizon}`;
+      const fieldsSummary = `Trend: ${nf.name}\nDescription: ${p.description}\nThesis: ${p.thesis}\nBear Case: ${p.bearCase}\nInvestment Map: ${p.investmentMap}\nConfidence: ${p.confidence}%\nMispricing Score: ${p.mispricingScore}\nSub-Trends: ${Array.isArray(p.subTrends) ? p.subTrends.join(", ") : p.subTrends}\nStage: ${STAGES[p.stage as number] || "Unknown"}\nHorizon: ${p.horizon}`;
       const assessData = await callAPI(
         "Impartial investment analyst. Evaluate this proposed mega-trend objectively. Be critical and specific.",
         fieldsSummary + "\n\n1. Probability this trend plays out as described (%)\n2. Can investors realistically make money on this? (High/Medium/Low with explanation)\n3. Recommendation: ADD to watchlist or SKIP (with reasoning)",
@@ -223,15 +233,11 @@ export default function AnalysisTab({
                   setResult("Error: " + data.error);
                   setResultModel(data.model || "");
                 } else {
-                  try {
-                    const parsed = parseAIJson(data.result);
-                    if (Array.isArray(parsed)) {
-                      setSuggestions(parsed);
-                      setResult("");
-                    } else {
-                      setResult(data.result);
-                    }
-                  } catch {
+                  const parsed = parseAIJson(data.result);
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    setSuggestions(parsed as Partial<Trend>[]);
+                    setResult("");
+                  } else {
                     // Fallback to raw text display
                     setResult(data.result);
                   }

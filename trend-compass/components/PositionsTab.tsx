@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import type { Trend, PriceData } from "@/lib/types";
-import { POSITIONS, CRASH_WATCHLIST, CATALYSTS, TRADE_LEGS, KEY_CONCEPTS, TIER_INFO } from "@/lib/seed-data";
+import { POSITIONS, CRASH_WATCHLIST, CATALYSTS, TRADE_LEGS, TIER_INFO } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
+
+/* ── helpers ─────────────────────────────────────────────────────────── */
 
 function perfText(v: number | null | undefined) {
   if (v === null || v === undefined) return "";
@@ -14,6 +16,37 @@ function perfColor(v: number | null | undefined) {
   return v >= 0 ? "#00e676" : "#ff1744";
 }
 
+const DIR_COLOR: Record<string, string> = {
+  LONG: "#00e676",
+  SHORT: "#ff1744",
+  HEDGE: "#c084fc",
+};
+const STATUS_BG: Record<string, string> = {
+  GO: "rgba(0,230,118,0.12)",
+  APPROACHING: "rgba(255,234,0,0.10)",
+  WAIT: "rgba(148,163,184,0.10)",
+};
+const STATUS_FG: Record<string, string> = {
+  GO: "#00e676",
+  APPROACHING: "#ffea00",
+  WAIT: "#94a3b8",
+};
+
+type SortKey =
+  | "ticker"
+  | "name"
+  | "dir"
+  | "tier"
+  | "type"
+  | "price"
+  | "perf20d"
+  | "perf60d"
+  | "conv"
+  | "status"
+  | "when";
+
+/* ── component ───────────────────────────────────────────────────────── */
+
 export default function PositionsTab({
   trends,
   prices,
@@ -23,17 +56,10 @@ export default function PositionsTab({
   prices: Record<string, PriceData>;
   tickerPerf?: Record<string, { perf20d: number | null; perf60d: number | null }>;
 }) {
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState("");
-  const [resultModel, setResultModel] = useState("");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ t1: true });
+  const [sortCol, setSortCol] = useState<SortKey>("tier");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  const toggle = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }));
-
-  const statusColor = (s: string) =>
-    s === "GO" ? "#00e676" : s === "APPROACHING" ? "#ffea00" : "#94a3b8";
-  const statusIcon = (s: string) =>
-    s === "GO" ? "\u2705" : s === "APPROACHING" ? "\uD83D\uDFE1" : "\u23F3";
+  /* ── price / status helpers ──────────────────────────────────────── */
 
   function getVix() {
     return prices["VIX"]?.close ?? null;
@@ -44,7 +70,7 @@ export default function PositionsTab({
     return p && typeof p.close === "number" && !isNaN(p.close) ? p : null;
   }
 
-  function dynamicStatus(p: typeof POSITIONS[0]) {
+  function dynamicStatus(p: (typeof POSITIONS)[0]) {
     const vix = getVix();
     if (p.when === "Buy now" || p.when.startsWith("Buy now")) return "GO";
     if (p.when.startsWith("Open now")) return "GO";
@@ -53,238 +79,369 @@ export default function PositionsTab({
     return p.status;
   }
 
+  /* ── sorting ─────────────────────────────────────────────────────── */
+
+  function toggleSort(col: SortKey) {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortCol(col);
+      setSortDir(col === "conv" ? "desc" : "asc");
+    }
+  }
+
+  function arrow(col: SortKey) {
+    if (sortCol !== col) return "";
+    return sortDir === "asc" ? " \u25B2" : " \u25BC";
+  }
+
+  const dirOrder: Record<string, number> = { LONG: 0, SHORT: 1, HEDGE: 2 };
+  const statusOrder: Record<string, number> = { GO: 0, APPROACHING: 1, WAIT: 2 };
+
+  const sorted = [...POSITIONS].sort((a, b) => {
+    let va: number | string;
+    let vb: number | string;
+
+    switch (sortCol) {
+      case "ticker":
+        va = a.ticker;
+        vb = b.ticker;
+        break;
+      case "name":
+        va = a.name;
+        vb = b.name;
+        break;
+      case "dir":
+        va = dirOrder[a.dir] ?? 9;
+        vb = dirOrder[b.dir] ?? 9;
+        break;
+      case "tier":
+        // secondary sort: conviction desc
+        if (a.tier !== b.tier) {
+          va = a.tier;
+          vb = b.tier;
+        } else {
+          // when tiers match, always sort conv desc regardless of outer direction
+          return b.conv - a.conv;
+        }
+        break;
+      case "type":
+        va = a.type;
+        vb = b.type;
+        break;
+      case "price":
+        va = safePrice(a.ticker)?.close ?? -9999;
+        vb = safePrice(b.ticker)?.close ?? -9999;
+        break;
+      case "perf20d":
+        va = tickerPerf?.[a.ticker]?.perf20d ?? -9999;
+        vb = tickerPerf?.[b.ticker]?.perf20d ?? -9999;
+        break;
+      case "perf60d":
+        va = tickerPerf?.[a.ticker]?.perf60d ?? -9999;
+        vb = tickerPerf?.[b.ticker]?.perf60d ?? -9999;
+        break;
+      case "conv":
+        va = a.conv;
+        vb = b.conv;
+        break;
+      case "status":
+        va = statusOrder[dynamicStatus(a)] ?? 9;
+        vb = statusOrder[dynamicStatus(b)] ?? 9;
+        break;
+      case "when":
+        va = a.when;
+        vb = b.when;
+        break;
+      default:
+        va = 0;
+        vb = 0;
+    }
+
+    const cmp =
+      typeof va === "string"
+        ? va.localeCompare(vb as string)
+        : (va as number) - (vb as number);
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  /* ── counts ──────────────────────────────────────────────────────── */
+
+  const longCount = POSITIONS.filter((p) => p.dir === "LONG").length;
+  const shortCount = POSITIONS.filter((p) => p.dir === "SHORT").length;
+  const hedgeCount = POSITIONS.filter((p) => p.dir === "HEDGE").length;
+
+  /* ── column definitions ──────────────────────────────────────────── */
+
+  const cols: { key: SortKey; label: string; tip?: string }[] = [
+    { key: "ticker", label: "Ticker" },
+    { key: "name", label: "Name" },
+    { key: "dir", label: "Dir", tip: "Direction: LONG / SHORT / HEDGE" },
+    { key: "tier", label: "Tier", tip: "1 = Deploy now. 2 = On correction. 3 = Individual picks. 4 = Long horizon & hedges." },
+    { key: "type", label: "Type" },
+    { key: "price", label: "Price", tip: "Live price from market data" },
+    { key: "perf20d", label: "20D %", tip: "Price change over the last 20 trading days" },
+    { key: "perf60d", label: "60D %", tip: "Price change over the last 60 trading days" },
+    { key: "conv", label: "Conviction", tip: "Conviction score 0-100" },
+    { key: "status", label: "Status", tip: "GO = deploy now. APPROACHING = nearly triggered. WAIT = conditions not met." },
+    { key: "when", label: "When", tip: "Deployment trigger / timing" },
+  ];
+
+  /* ── render ──────────────────────────────────────────────────────── */
+
   return (
     <div className="animate-fadeIn">
-      <div className="flex justify-between items-center mb-1.5">
-        <h2 className="text-xl font-semibold">Positions & Watchlist</h2>
-        <button
-          className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50"
-          disabled={loading}
-          onClick={async () => {
-            setLoading(true); setResult("");
-            try {
-              const res = await fetch("/api/ai", {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  system: "Analyze positions for gaps, concentration, correlation. Suggest specific tickers to add or remove.",
-                  prompt: `Positions:\n${POSITIONS.map((p) => `${p.dir} ${p.ticker} Conv:${p.conv}`).join("\n")}\nCrash Watchlist: ${CRASH_WATCHLIST.map((w) => w.ticker).join(", ")}\nTrends: ${trends.map((t) => t.name).join(", ")}\n\n1. Zero coverage gaps?\n2. Concentration risks?\n3. Tickers to add?\n4. Tickers to remove?\n5. Allocation %?`,
-                  tier: "synthesis",
-                }),
-              });
-              const data = await res.json();
-              setResult(data.error ? "Error: " + data.error : data.result);
-              setResultModel(data.model || "");
-            } catch (e: unknown) { setResult("Error: " + (e instanceof Error ? e.message : "Unknown")); } finally { setLoading(false); }
-          }}
-        >
-          Analyze Gaps
-        </button>
-      </div>
-      <p className="text-[13px] text-[#64748b] mb-5">
-        {POSITIONS.filter((p) => p.dir === "LONG").length} longs &middot; {POSITIONS.filter((p) => p.dir === "SHORT").length} shorts &middot; {POSITIONS.filter((p) => p.dir === "HEDGE").length} hedges &middot; {CRASH_WATCHLIST.length} on crash watchlist
+      <h2 className="text-xl font-semibold mb-1">Positions & Watchlist</h2>
+
+      {/* ====== SECTION 1: Active Positions ====== */}
+      <p className="text-[13px] text-[#94a3b8] mb-4 leading-relaxed max-w-[900px]">
+        Active and watchlisted positions across 4 deployment tiers. Tier 1 deploys now (physical commodities, anti-correlated). Tier 2 deploys on correction. Tier 3 is individual high-conviction picks. Tier 4 is long-horizon and hedges.
       </p>
 
-      {[1, 2, 3, 4].map((tier) => {
-        const items = POSITIONS.filter((p) => p.tier === tier);
-        if (!items.length) return null;
-        const info = TIER_INFO[tier];
-        const key = "t" + tier;
-        const isOpen = expanded[key];
-        return (
-          <div key={tier} className="mb-3">
-            <div onClick={() => toggle(key)} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm" style={{ color: info.color }}>{isOpen ? "\u25BE" : "\u25B8"}</span>
-                <h3 className="text-sm font-semibold" style={{ color: info.color }}>{info.label}</h3>
-                <Badge color="#475569">{items.length}</Badge>
-              </div>
-              <span className="text-[11px] text-[#94a3b8]">{info.sub}</span>
-            </div>
-            {isOpen && (
-              <div className={`mt-2 ${tier === 1 ? "flex flex-col gap-2" : "grid grid-cols-2 gap-2"}`}>
-                {items.map((p, i) => {
-                  const dc = p.dir === "LONG" ? "#00e676" : p.dir === "SHORT" ? "#ff1744" : "#c084fc";
-                  const ds = dynamicStatus(p);
-                  const livePrice = safePrice(p.ticker);
-                  return (
-                    <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-3.5" style={{ borderLeft: `3px solid ${dc}` }}>
-                      <div className="flex justify-between items-center mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-base font-bold font-mono" style={{ color: dc }}>{p.ticker}</span>
-                          <Badge color={dc}>{p.dir}</Badge>
-                          <span className="text-[11px] text-[#475569]">{p.type}{p.fee !== "-" ? ` \u00B7 Fee: ${p.fee}` : ""}</span>
-                          {livePrice && <span className="text-[11px] text-[#00e5ff] font-mono font-semibold ml-1">${livePrice.close.toFixed(2)}</span>}
-                          {tickerPerf?.[p.ticker] && (
-                            <span className="text-[10px] font-mono ml-1.5">
-                              <span style={{ color: perfColor(tickerPerf[p.ticker].perf20d) }}>{perfText(tickerPerf[p.ticker].perf20d)}</span>
-                              <span className="text-[#475569] mx-0.5">/</span>
-                              <span style={{ color: perfColor(tickerPerf[p.ticker].perf60d) }}>{perfText(tickerPerf[p.ticker].perf60d)}</span>
-                              <span className="text-[#475569] ml-0.5 text-[9px]">20d/60d</span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <span className="text-lg font-bold font-mono" style={{ color: dc }}>{p.conv}</span>
-                          <span className="block text-[9px] text-[#475569] uppercase tracking-widest">Conviction</span>
-                        </div>
-                      </div>
-                      <p className="text-[13px] font-semibold mb-1">{p.name}</p>
-                      <p className="text-xs text-[#94a3b8] leading-snug mb-1.5">{p.why}</p>
-                      <div className="flex gap-3 flex-wrap text-[11px]">
-                        <span><span className="text-[#64748b]">When: </span><span className="text-[#00e5ff]">{p.when}</span></span>
-                        <span><span className="text-[#64748b]">Corr: </span><span style={{ color: p.corr === "Anti-correlated" ? "#00e676" : p.corr === "Uncorrelated" ? "#c084fc" : "#ffea00" }}>{p.corr}</span></span>
-                      </div>
-                      <div className="mt-1 px-2 py-[3px] rounded text-[11px] inline-block" style={{ background: statusColor(ds) + "14", color: statusColor(ds) }}>
-                        {statusIcon(ds)} {ds}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      <p className="text-[13px] text-[#64748b] mb-3">
+        {longCount} longs &middot; {shortCount} shorts &middot; {hedgeCount} hedges
+      </p>
 
-      {/* Crash Watchlist */}
-      <div className="mb-3 mt-5">
-        <div onClick={() => toggle("crash")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-[rgba(224,64,251,0.04)] rounded-lg border border-[#4a1d8e]">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm text-[#e040fb]">{expanded.crash ? "\u25BE" : "\u25B8"}</span>
-            <h3 className="text-sm font-semibold text-[#e040fb]">Crash Watchlist</h3>
-            <Badge color="#e040fb">{CRASH_WATCHLIST.length}</Badge>
-          </div>
-          <span className="text-[11px] text-[#c084fc]">Quality companies to accumulate 40-60% off highs</span>
-        </div>
-        {expanded.crash && (
-          <div className="mt-2">
-            <p className="text-[11px] text-[#94a3b8] mb-2.5 leading-relaxed">
-              Dotcom lesson: Amazon $107 to $7 to $3,500. The crash kills junk but drags quality hardware/infra companies down too. Hardware &gt; Software. Physical assets &gt; Digital promises.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {CRASH_WATCHLIST.map((w, i) => {
-                const isSpec = w.quality.startsWith("SPEC");
-                const livePrice = safePrice(w.ticker);
-                const highNum = parseFloat(w.high.replace(/[^0-9.]/g, ""));
-                const offHighLive = livePrice && highNum ? ((livePrice.close / highNum - 1) * 100).toFixed(1) : null;
-                return (
-                  <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-3" style={{ borderLeft: `3px solid ${isSpec ? "#ff9100" : "#e040fb"}` }}>
-                    <div className="flex justify-between items-center mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[15px] font-bold font-mono" style={{ color: isSpec ? "#ff9100" : "#e040fb" }}>{w.ticker}</span>
-                        <Badge color={isSpec ? "#ff9100" : "#e040fb"}>{w.sector}</Badge>
-                      </div>
-                      <span className="text-[11px] text-[#475569] font-mono">{w.maxPos}</span>
-                    </div>
-                    <p className="text-xs font-semibold mb-1">{w.name}</p>
-                    <div className="flex gap-2 flex-wrap mb-1.5 text-[11px]">
-                      <span className="px-1.5 py-[2px] rounded bg-white/5">
-                        <span className="text-[#64748b]">Now: </span>
-                        <span className="text-[#e0e4ec] font-semibold">{livePrice ? `$${livePrice.close.toFixed(2)}` : w.now}</span>
-                      </span>
-                      <span className="px-1.5 py-[2px] rounded bg-white/5">
-                        <span className="text-[#64748b]">High: </span><span className="text-[#94a3b8]">{w.high}</span>
-                      </span>
-                      <span className="px-1.5 py-[2px] rounded" style={{ background: (offHighLive ? parseFloat(offHighLive) : parseInt(w.offHigh)) < -30 ? "rgba(0,230,118,0.1)" : "rgba(255,234,0,0.08)" }}>
-                        <span className="text-[#64748b]">Off high: </span>
-                        <span className="font-semibold" style={{ color: (offHighLive ? parseFloat(offHighLive) : parseInt(w.offHigh)) < -30 ? "#00e676" : "#ffea00" }}>
-                          {offHighLive ? `${offHighLive}%` : w.offHigh}
-                        </span>
-                      </span>
-                    </div>
-                    <div className="px-2 py-1 bg-[rgba(224,64,251,0.06)] rounded mb-1">
-                      <span className="text-[11px] text-[#64748b]">Buy zone: </span>
-                      <span className="text-[11px] text-[#e040fb] font-semibold">{w.buyPrice}</span>
-                    </div>
-                    <p className="text-[10px] text-[#94a3b8] leading-snug mt-0.5">{w.quality}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
+      <div className="overflow-x-auto rounded-[10px] border border-[#1e293b] mb-10">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="bg-white/[0.03] sticky top-0">
+              {cols.map((c) => (
+                <th
+                  key={c.key}
+                  onClick={() => toggleSort(c.key)}
+                  className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#64748b] font-medium select-none whitespace-nowrap cursor-pointer"
+                  title={c.tip || ""}
+                >
+                  {c.label}
+                  {arrow(c.key)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((p, i) => {
+              const ds = dynamicStatus(p);
+              const livePrice = safePrice(p.ticker);
+              const perf = tickerPerf?.[p.ticker];
+              const tierInfo = TIER_INFO[p.tier];
 
-      {/* Catalysts */}
-      <div className="mb-3">
-        <div onClick={() => toggle("catalysts")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm text-[#ff9100]">{expanded.catalysts ? "\u25BE" : "\u25B8"}</span>
-            <h3 className="text-sm font-semibold text-[#ff9100]">Deployment Catalysts</h3>
-            <Badge color="#ff9100">{CATALYSTS.length}</Badge>
-          </div>
-          <span className="text-[11px] text-[#ff9100]">Events that trigger wave transitions</span>
-        </div>
-        {expanded.catalysts && (
-          <div className="mt-2">
-            {CATALYSTS.map((c, i) => (
-              <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] px-3.5 py-2.5 flex gap-3 mb-1.5">
-                <Badge color="#ff9100">{c.date}</Badge>
-                <div><span className="text-[13px] font-semibold">{c.name}</span><span className="text-xs text-[#94a3b8]"> &mdash; {c.impact}</span></div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Core Trade */}
-      <div className="mb-3">
-        <div onClick={() => toggle("core")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm text-[#00e676]">{expanded.core ? "\u25BE" : "\u25B8"}</span>
-            <h3 className="text-sm font-semibold text-[#00e676]">Core Trade Structure</h3>
-          </div>
-          <span className="text-[11px] text-[#00e676]">Long Hard Assets vs. Short Bonds</span>
-        </div>
-        {expanded.core && (
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {TRADE_LEGS.map((l, i) => {
-              const lc = l.side === "LONG" ? "#00e676" : "#ff1744";
               return (
-                <div key={i} className="px-2.5 py-2.5 rounded-md" style={{ background: l.side === "LONG" ? "rgba(0,230,118,0.05)" : "rgba(255,23,68,0.05)", borderLeft: `3px solid ${lc}` }}>
-                  <div className="flex justify-between mb-1"><Badge color={lc}>{l.side}</Badge><span className="text-[11px] text-[#64748b] font-mono">{l.alloc}</span></div>
-                  <p className="text-xs text-[#cbd5e1] mb-0.5">{l.inst}</p>
-                  <p className="text-[10px] text-[#64748b] italic">{l.note}</p>
-                </div>
+                <tr
+                  key={i}
+                  className="hover:bg-white/[0.03] border-b border-[#1e293b]"
+                >
+                  {/* Ticker */}
+                  <td className="px-3 py-2.5 font-mono font-bold" style={{ color: "#00e5ff" }}>
+                    {p.ticker}
+                  </td>
+
+                  {/* Name */}
+                  <td className="px-3 py-2.5 font-semibold whitespace-nowrap">{p.name}</td>
+
+                  {/* Dir */}
+                  <td className="px-3 py-2.5">
+                    <Badge color={DIR_COLOR[p.dir]}>{p.dir}</Badge>
+                  </td>
+
+                  {/* Tier */}
+                  <td className="px-3 py-2.5">
+                    <span
+                      className="font-mono font-bold"
+                      style={{ color: tierInfo?.color || "#94a3b8" }}
+                      title={tierInfo?.label || ""}
+                    >
+                      {p.tier}
+                    </span>
+                  </td>
+
+                  {/* Type */}
+                  <td className="px-3 py-2.5 text-[#94a3b8] whitespace-nowrap">{p.type}</td>
+
+                  {/* Price */}
+                  <td className="px-3 py-2.5 font-mono" style={{ color: "#e0e4ec" }}>
+                    {livePrice ? `$${livePrice.close.toFixed(2)}` : "\u2014"}
+                  </td>
+
+                  {/* 20D % */}
+                  <td
+                    className="px-3 py-2.5 font-mono"
+                    style={{ color: perfColor(perf?.perf20d) }}
+                  >
+                    {perfText(perf?.perf20d)}
+                  </td>
+
+                  {/* 60D % */}
+                  <td
+                    className="px-3 py-2.5 font-mono"
+                    style={{ color: perfColor(perf?.perf60d) }}
+                  >
+                    {perfText(perf?.perf60d)}
+                  </td>
+
+                  {/* Conviction */}
+                  <td className="px-3 py-2.5 font-mono font-bold" style={{ color: p.conv >= 80 ? "#00e676" : p.conv >= 60 ? "#ffea00" : "#ff9100" }}>
+                    {p.conv}
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-3 py-2.5">
+                    <span
+                      className="inline-block px-2.5 py-[3px] rounded-full text-[11px] font-semibold font-mono"
+                      style={{
+                        background: STATUS_BG[ds] || STATUS_BG.WAIT,
+                        color: STATUS_FG[ds] || STATUS_FG.WAIT,
+                      }}
+                    >
+                      {ds}
+                    </span>
+                  </td>
+
+                  {/* When */}
+                  <td className="px-3 py-2.5 text-[#94a3b8] whitespace-nowrap text-[12px]">
+                    {p.when}
+                  </td>
+                </tr>
               );
             })}
-          </div>
-        )}
+          </tbody>
+        </table>
       </div>
 
-      {/* Key Frameworks */}
-      <div className="mb-3">
-        <div onClick={() => toggle("frameworks")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm text-[#64748b]">{expanded.frameworks ? "\u25BE" : "\u25B8"}</span>
-            <h3 className="text-sm font-semibold text-[#94a3b8]">Key Frameworks</h3>
-            <Badge color="#475569">{KEY_CONCEPTS.length}</Badge>
+      {/* ====== SECTION 2: Crash Watchlist ====== */}
+      <h3 className="text-base font-semibold mb-1">Crash Watchlist</h3>
+      <p className="text-[13px] text-[#94a3b8] mb-4 leading-relaxed max-w-[900px]">
+        Quality companies to accumulate at 40-60% off highs. The dotcom lesson: Amazon went from $107 to $7 to $3,500. Crashes kill junk but drag quality hardware/infra down too.
+      </p>
+
+      <div className="overflow-x-auto rounded-[10px] border border-[#1e293b] mb-10">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="bg-white/[0.03] sticky top-0">
+              {(
+                [
+                  "Ticker",
+                  "Name",
+                  "Sector",
+                  "Price",
+                  "High",
+                  "Off High",
+                  "Buy Zone",
+                  "Max Position",
+                ] as const
+              ).map((label) => (
+                <th
+                  key={label}
+                  className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#64748b] font-medium select-none whitespace-nowrap"
+                >
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {CRASH_WATCHLIST.map((w, i) => {
+              const livePrice = safePrice(w.ticker);
+              const highNum = parseFloat(w.high.replace(/[^0-9.]/g, ""));
+              const offHighLive =
+                livePrice && highNum
+                  ? (livePrice.close / highNum - 1) * 100
+                  : null;
+              const offHighVal =
+                offHighLive !== null ? offHighLive : parseFloat(w.offHigh);
+              const offHighStr =
+                offHighLive !== null
+                  ? `${offHighLive >= 0 ? "+" : ""}${offHighLive.toFixed(1)}%`
+                  : w.offHigh;
+              const isDeep = offHighVal < -30;
+
+              return (
+                <tr
+                  key={i}
+                  className="hover:bg-white/[0.03] border-b border-[#1e293b]"
+                >
+                  <td className="px-3 py-2.5 font-mono font-bold" style={{ color: "#e040fb" }}>
+                    {w.ticker}
+                  </td>
+                  <td className="px-3 py-2.5 font-semibold whitespace-nowrap">{w.name}</td>
+                  <td className="px-3 py-2.5 text-[#94a3b8] whitespace-nowrap">{w.sector}</td>
+                  <td className="px-3 py-2.5 font-mono" style={{ color: "#e0e4ec" }}>
+                    {livePrice ? `$${livePrice.close.toFixed(2)}` : w.now}
+                  </td>
+                  <td className="px-3 py-2.5 font-mono text-[#94a3b8]">{w.high}</td>
+                  <td className="px-3 py-2.5 font-mono font-semibold" style={{ color: isDeep ? "#00e676" : "#ffea00" }}>
+                    {offHighStr}
+                  </td>
+                  <td className="px-3 py-2.5 text-[#e040fb] font-mono text-[12px]">{w.buyPrice}</td>
+                  <td className="px-3 py-2.5 text-[#94a3b8] font-mono text-[12px]">{w.maxPos}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ====== SECTION 3: Catalysts & Framework ====== */}
+      <h3 className="text-base font-semibold mb-4">Catalysts & Framework</h3>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Left: Deployment Catalysts */}
+        <div className="overflow-x-auto rounded-[10px] border border-[#1e293b]">
+          <div className="px-3.5 py-2.5 bg-white/[0.03] border-b border-[#1e293b]">
+            <h4 className="text-[11px] uppercase tracking-widest font-mono text-[#ff9100] font-medium">
+              Deployment Catalysts
+            </h4>
           </div>
-        </div>
-        {expanded.frameworks && (
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {KEY_CONCEPTS.map((k, i) => (
-              <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] px-3 py-2.5">
-                <h4 className="text-xs font-semibold mb-1">{k.name}</h4>
-                <p className="text-[11px] text-[#94a3b8] leading-snug">{k.desc}</p>
+          <div className="divide-y divide-[#1e293b]">
+            {CATALYSTS.map((c, i) => (
+              <div key={i} className="px-3.5 py-2.5 flex items-start gap-3 hover:bg-white/[0.03]">
+                <Badge color="#ff9100">{c.date}</Badge>
+                <div className="min-w-0">
+                  <span className="text-[13px] font-semibold">{c.name}</span>
+                  <span className="text-[12px] text-[#94a3b8]"> &mdash; {c.impact}</span>
+                </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
 
-      {loading && (
-        <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-10 text-center animate-pulse mt-4">
-          <div className="inline-block w-4 h-4 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
-          <p className="mt-3 text-[13px] text-[#0ea5e9]">Analyzing...</p>
+        {/* Right: Core Trade */}
+        <div className="overflow-x-auto rounded-[10px] border border-[#1e293b]">
+          <div className="px-3.5 py-2.5 bg-white/[0.03] border-b border-[#1e293b]">
+            <h4 className="text-[11px] uppercase tracking-widest font-mono text-[#00e676] font-medium">
+              Core Trade
+            </h4>
+          </div>
+          <table className="w-full text-[13px]">
+            <thead>
+              <tr className="bg-white/[0.02]">
+                <th className="px-3 py-2 text-left uppercase tracking-widest font-mono text-[11px] text-[#64748b] font-medium">
+                  Side
+                </th>
+                <th className="px-3 py-2 text-left uppercase tracking-widest font-mono text-[11px] text-[#64748b] font-medium">
+                  Instrument
+                </th>
+                <th className="px-3 py-2 text-left uppercase tracking-widest font-mono text-[11px] text-[#64748b] font-medium">
+                  Allocation
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {TRADE_LEGS.map((l, i) => {
+                const lc = l.side === "LONG" ? "#00e676" : "#ff1744";
+                return (
+                  <tr key={i} className="border-b border-[#1e293b] hover:bg-white/[0.03]">
+                    <td className="px-3 py-2.5">
+                      <Badge color={lc}>{l.side}</Badge>
+                    </td>
+                    <td className="px-3 py-2.5 text-[#cbd5e1]">{l.inst}</td>
+                    <td className="px-3 py-2.5 font-mono text-[#94a3b8]">{l.alloc}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
-      {result && !loading && (
-        <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-5 mt-4 animate-fadeIn">
-          <span className="text-[11px] text-[#00e676] font-mono font-semibold">ANALYSIS{resultModel ? ` via ${resultModel}` : ""}</span>
-          <div className="mt-3 text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{result}</div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

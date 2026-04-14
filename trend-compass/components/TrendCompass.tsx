@@ -88,10 +88,13 @@ export default function TrendCompass() {
   async function refreshPrices() {
     setPricesRefreshing(true);
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
       const [priceRes, perfRes] = await Promise.all([
-        fetch("/api/prices"),
-        fetch("/api/performance"),
+        fetch("/api/prices", { signal: controller.signal }),
+        fetch("/api/performance", { signal: controller.signal }),
       ]);
+      clearTimeout(timeout);
       const priceData = await priceRes.json();
       const perfData = await perfRes.json();
       if (priceData && typeof priceData === "object" && !priceData.error) {
