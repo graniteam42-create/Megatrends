@@ -67,10 +67,12 @@ export default function LoginPage() {
             alt=""
             onLoad={() => setImgLoaded(true)}
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ opacity: imgLoaded ? 0.45 : 0, transition: "opacity 1.5s ease-in" }}
+            style={{ opacity: imgLoaded ? 0.8 : 0, transition: "opacity 1.5s ease-in" }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0c10] via-[#0a0c10cc] to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0c10] via-transparent to-[#0a0c10aa]" />
+          {/* Gradient only on the left 40% where the form sits */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #0a0c10 25%, #0a0c10cc 35%, transparent 55%)" }} />
+          {/* Subtle vignette at very top and bottom edges only */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, #0a0c10 0%, transparent 15%, transparent 85%, #0a0c10 100%)" }} />
         </>
       )}
 
