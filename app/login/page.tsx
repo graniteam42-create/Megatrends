@@ -1,13 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
+interface ArtworkInfo {
+  imageUrl: string;
+  title: string;
+  artist: string;
+  date: string;
+}
+
+const ARTWORK_IDS = [
+  436535, 438817, 437853, 436528, 437329, 436840, 438012, 437980,
+  435809, 436573, 437869, 435882, 436105, 437984, 435621, 438722,
+  437133, 436106, 435976, 436524, 435888, 437879, 436965, 437321,
+  438816, 436483, 436947, 437526, 437436, 438474,
+];
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [art, setArt] = useState<ArtworkInfo | null>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const id = ARTWORK_IDS[Math.floor(Math.random() * ARTWORK_IDS.length)];
+    fetch(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.primaryImage) {
+          setArt({
+            imageUrl: data.primaryImage,
+            title: data.title || "",
+            artist: data.artistDisplayName || "Unknown artist",
+            date: data.objectDate || "",
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,27 +60,64 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center font-mono">
-      <form onSubmit={handleSubmit} className="bg-[#111827] border border-[#1e293b] rounded-xl p-8 w-full max-w-sm">
-        <h1 className="text-[#00e5ff] text-xl font-bold tracking-wider mb-1">TREND COMPASS</h1>
-        <p className="text-[#64748b] text-xs tracking-widest uppercase mb-6">Strategic Intelligence System</p>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-          className="w-full px-4 py-3 bg-[#0d1117] border border-[#1e293b] rounded-lg text-[#e0e4ec] text-sm outline-none focus:border-[#00e5ff] mb-4"
-          autoFocus
-        />
-        {error && <p className="text-[#ff1744] text-xs mb-3">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3 bg-[#00e5ff] text-[#0a0c10] font-semibold rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
-        >
-          {loading ? "..." : "Enter"}
-        </button>
-      </form>
+    <div className="min-h-screen bg-[#0a0c10] flex font-mono relative overflow-hidden">
+      {/* Loading state while artwork loads */}
+      {!imgLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="inline-block w-5 h-5 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
+        </div>
+      )}
+
+      {/* Full artwork background - high visibility */}
+      {art && (
+        <>
+          <img
+            src={art.imageUrl}
+            alt={art.title}
+            onLoad={() => setImgLoaded(true)}
+            className="absolute right-0 top-0 h-full object-contain object-right"
+            style={{ opacity: imgLoaded ? 1 : 0, transition: "opacity 1.5s ease-in", maxWidth: "65%" }}
+          />
+          {/* Soft edge blend where image meets the dark left side */}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #0a0c10 30%, #0a0c10 32%, transparent 45%)" }} />
+        </>
+      )}
+
+      {/* Left-aligned form */}
+      <div className="relative z-10 flex flex-col justify-center px-12 py-16 w-full max-w-md transition-opacity duration-700" style={{ opacity: imgLoaded ? 1 : 0 }}>
+        <form onSubmit={handleSubmit} className="bg-[#111827]/80 backdrop-blur-md border border-[#1e293b] rounded-xl p-8">
+          <h1 className="text-[#00e5ff] text-xl font-bold tracking-wider mb-1">TREND COMPASS</h1>
+          <p className="text-[#94a3b8] text-xs tracking-widest uppercase mb-6">Strategic Intelligence System</p>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            className="w-full px-4 py-3 bg-[#0d1117]/80 border border-[#1e293b] rounded-lg text-[#e0e4ec] text-sm outline-none focus:border-[#00e5ff] mb-4"
+            autoFocus
+          />
+          {error && <p className="text-[#ff1744] text-xs mb-3">{error}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-[#00e5ff] text-[#0a0c10] font-semibold rounded-lg text-sm hover:opacity-90 disabled:opacity-50"
+          >
+            {loading ? "..." : "Enter"}
+          </button>
+        </form>
+
+        {art && (
+          <div className="mt-4 px-3 py-2 rounded-lg bg-[#0a0c10]/70 backdrop-blur-sm inline-block">
+            <p className="text-[11px] text-[#cbd5e1] leading-relaxed">
+              <span className="italic">{art.title}</span>{art.date ? ` (${art.date})` : ""}
+              <br />
+              <span className="text-[#94a3b8]">{art.artist}</span>
+              <br />
+              <span className="text-[10px] text-[#64748b]">The Metropolitan Museum of Art</span>
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
