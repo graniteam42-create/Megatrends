@@ -9,7 +9,6 @@ interface ArtworkInfo {
   artist: string;
 }
 
-// Curated list of visually striking Met Museum artwork IDs (paintings with large images)
 const ARTWORK_IDS = [
   436535, 438817, 437853, 436528, 437329, 436840, 438012, 437980,
   435809, 436573, 437869, 435882, 436105, 437984, 435621, 438722,
@@ -22,6 +21,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [art, setArt] = useState<ArtworkInfo | null>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -58,30 +58,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0c10] flex items-center justify-center font-mono relative overflow-hidden">
-      {/* Artwork background */}
+    <div className="min-h-screen bg-[#0a0c10] flex font-mono relative overflow-hidden">
+      {/* Full artwork background - high visibility */}
       {art && (
-        <div
-          className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-          style={{
-            backgroundImage: `url(${art.imageUrl})`,
-            opacity: 0.15,
-            filter: "blur(2px)",
-          }}
-        />
+        <>
+          <img
+            src={art.imageUrl}
+            alt=""
+            onLoad={() => setImgLoaded(true)}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ opacity: imgLoaded ? 0.45 : 0, transition: "opacity 1.5s ease-in" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0c10] via-[#0a0c10cc] to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0c10] via-transparent to-[#0a0c10aa]" />
+        </>
       )}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0a0c10] via-transparent to-[#0a0c10]" />
 
-      <div className="relative z-10 w-full max-w-sm">
-        <form onSubmit={handleSubmit} className="bg-[#111827]/90 backdrop-blur-sm border border-[#1e293b] rounded-xl p-8">
+      {/* Left-aligned form */}
+      <div className="relative z-10 flex flex-col justify-center px-12 py-16 w-full max-w-md">
+        <form onSubmit={handleSubmit} className="bg-[#111827]/80 backdrop-blur-md border border-[#1e293b] rounded-xl p-8">
           <h1 className="text-[#00e5ff] text-xl font-bold tracking-wider mb-1">TREND COMPASS</h1>
-          <p className="text-[#64748b] text-xs tracking-widest uppercase mb-6">Strategic Intelligence System</p>
+          <p className="text-[#94a3b8] text-xs tracking-widest uppercase mb-6">Strategic Intelligence System</p>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="w-full px-4 py-3 bg-[#0d1117] border border-[#1e293b] rounded-lg text-[#e0e4ec] text-sm outline-none focus:border-[#00e5ff] mb-4"
+            className="w-full px-4 py-3 bg-[#0d1117]/80 border border-[#1e293b] rounded-lg text-[#e0e4ec] text-sm outline-none focus:border-[#00e5ff] mb-4"
             autoFocus
           />
           {error && <p className="text-[#ff1744] text-xs mb-3">{error}</p>}
@@ -94,10 +97,11 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Artwork credit */}
         {art && (
-          <p className="text-center text-[10px] text-[#475569] mt-4 italic">
-            {art.title} — {art.artist} (The Metropolitan Museum of Art)
+          <p className="text-[11px] text-[#64748b] mt-4 leading-relaxed">
+            <span className="italic">{art.title}</span> — {art.artist}
+            <br />
+            <span className="text-[10px] text-[#475569]">The Metropolitan Museum of Art</span>
           </p>
         )}
       </div>
