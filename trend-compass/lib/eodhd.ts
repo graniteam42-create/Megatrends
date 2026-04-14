@@ -14,6 +14,7 @@ export async function fetchPrice(ticker: string): Promise<PriceData | null> {
     const res = await fetch(url, { next: { revalidate: 300 } });
     if (!res.ok) return null;
     const data = await res.json();
+    if (typeof data.close !== "number" || isNaN(data.close)) return null;
     return {
       close: data.close,
       change_p: data.change_p,

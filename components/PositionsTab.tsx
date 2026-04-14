@@ -28,6 +28,11 @@ export default function PositionsTab({
     return prices["VIX"]?.close ?? null;
   }
 
+  function safePrice(ticker: string): PriceData | null {
+    const p = prices[ticker];
+    return p && typeof p.close === "number" && !isNaN(p.close) ? p : null;
+  }
+
   function dynamicStatus(p: typeof POSITIONS[0]) {
     const vix = getVix();
     if (p.when === "Buy now" || p.when.startsWith("Buy now")) return "GO";
@@ -89,7 +94,7 @@ export default function PositionsTab({
                 {items.map((p, i) => {
                   const dc = p.dir === "LONG" ? "#00e676" : p.dir === "SHORT" ? "#ff1744" : "#c084fc";
                   const ds = dynamicStatus(p);
-                  const livePrice = prices[p.ticker];
+                  const livePrice = safePrice(p.ticker);
                   return (
                     <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-3.5" style={{ borderLeft: `3px solid ${dc}` }}>
                       <div className="flex justify-between items-center mb-1">
@@ -137,7 +142,7 @@ export default function PositionsTab({
             <div className="grid grid-cols-2 gap-2">
               {CRASH_WATCHLIST.map((w, i) => {
                 const isSpec = w.quality.startsWith("SPEC");
-                const livePrice = prices[w.ticker];
+                const livePrice = safePrice(w.ticker);
                 const highNum = parseFloat(w.high.replace(/[^0-9.]/g, ""));
                 const offHighLive = livePrice && highNum ? ((livePrice.close / highNum - 1) * 100).toFixed(1) : null;
                 return (
