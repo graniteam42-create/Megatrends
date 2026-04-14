@@ -152,7 +152,7 @@ export default function TrendCompass() {
         {tab === "landscape" && <LandscapeTab trends={trends} onSwitchTab={(t, trendId) => { setTab(t); if (trendId) setFocusTrendId(trendId); }} performance={performance} />}
         {tab === "analysis" && <AnalysisTab trends={trends} setTrends={setTrends} scans={scans} setScans={setScans} focusTrendId={focusTrendId} onFocusHandled={() => setFocusTrendId(null)} />}
         {tab === "positions" && <PositionsTab trends={trends} prices={prices} tickerPerf={Object.fromEntries(Object.values(performance).map((p) => [p.ticker, { perf20d: p.perf20d, perf60d: p.perf60d }]))} />}
-        {tab === "lab" && <StrategyLabTab trends={trends} />}
+        {tab === "lab" && <StrategyLabTab trends={trends} setTrends={setTrends} />}
       </div>
     </div>
   );
