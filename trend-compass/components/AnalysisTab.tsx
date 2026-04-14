@@ -407,26 +407,39 @@ export default function AnalysisTab({
         return (
           <div key={t.id} id={`trend-${t.id}`} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] overflow-hidden mb-3.5">
             {TREND_IMAGES[t.id] && (
-              <div className="relative h-32 w-full">
+              <div className="relative h-44 w-full">
                 <img src={TREND_IMAGES[t.id].url} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#111827]" />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#11182700] via-[#11182766] to-[#111827]" />
+                <div className="absolute bottom-3 left-5 right-5 flex items-end justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <h3 className="text-[19px] font-bold drop-shadow-lg">{t.name}</h3>
+                    <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
+                    <Badge color="#94a3b8">{t.horizon}</Badge>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
+                    <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setTrends((p) => p.filter((x) => x.id !== t.id))}>X</button>
+                  </div>
+                </div>
               </div>
             )}
             <div className="p-5">
-            <div className="flex justify-between items-start">
+            {!TREND_IMAGES[t.id] && (
+            <div className="flex justify-between items-start mb-2">
               <div className="flex-1">
                 <div className="flex items-center gap-2.5 mb-1.5">
                   <h3 className="text-[17px] font-semibold">{t.name}</h3>
                   <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
                   <Badge color="#94a3b8">{t.horizon}</Badge>
                 </div>
-                <p className="text-[13px] text-[#94a3b8] leading-relaxed mb-2">{t.description}</p>
               </div>
               <div className="flex gap-1.5 ml-3">
                 <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
                 <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setTrends((p) => p.filter((x) => x.id !== t.id))}>X</button>
               </div>
             </div>
+            )}
+            <p className="text-[13px] text-[#94a3b8] leading-relaxed mb-2">{t.description}</p>
             <div className="grid grid-cols-2 gap-3.5">
               <StagePipeline stage={t.stage} onChange={(v) => setTrends((p) => p.map((x) => (x.id === t.id ? { ...x, stage: v } : x)))} />
               <div className="flex gap-3">
