@@ -109,13 +109,15 @@ export default function LoginPage() {
         </form>
 
         {art && (
-          <p className="text-[11px] text-[#64748b] mt-4 leading-relaxed">
-            <span className="italic">{art.title}</span>{art.date ? ` (${art.date})` : ""}
-            <br />
-            {art.artist}
-            <br />
-            <span className="text-[10px] text-[#475569]">The Metropolitan Museum of Art</span>
-          </p>
+          <div className="mt-4 px-3 py-2 rounded-lg bg-[#0a0c10]/70 backdrop-blur-sm inline-block">
+            <p className="text-[11px] text-[#cbd5e1] leading-relaxed">
+              <span className="italic">{art.title}</span>{art.date ? ` (${art.date})` : ""}
+              <br />
+              <span className="text-[#94a3b8]">{art.artist}</span>
+              <br />
+              <span className="text-[10px] text-[#64748b]">The Metropolitan Museum of Art</span>
+            </p>
+          </div>
         )}
       </div>
     </div>
