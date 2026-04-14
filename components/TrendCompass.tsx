@@ -7,7 +7,9 @@ import LandscapeTab from "./LandscapeTab";
 import AnalysisTab from "./AnalysisTab";
 import PositionsTab from "./PositionsTab";
 import StrategyLabTab from "./StrategyLabTab";
-import VisitLog from "./VisitLog";
+import dynamic from "next/dynamic";
+
+const VisitLog = dynamic(() => import("./VisitLog"), { ssr: false });
 
 const TABS = [
   { id: "landscape", label: "Landscape" },

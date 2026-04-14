@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
 interface Visit {
   ts: string;
@@ -19,7 +17,8 @@ export default function VisitLog({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<L.Map | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapInstance = useRef<any>(null);
 
   useEffect(() => {
     fetch("/api/visits")
@@ -37,47 +36,54 @@ export default function VisitLog({ onClose }: { onClose: () => void }) {
 
     const geoVisits = visits.filter((v) => v.lat !== null && v.lng !== null);
 
-    const map = L.map(mapRef.current, {
-      center: [30, 10],
-      zoom: 2,
-      zoomControl: true,
-      attributionControl: true,
-    });
+    (async () => {
+      const L = (await import("leaflet")).default;
+      await import("leaflet/dist/leaflet.css");
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      maxZoom: 18,
-    }).addTo(map);
+      const map = L.map(mapRef.current!, {
+        center: [30, 10],
+        zoom: 2,
+        zoomControl: true,
+        attributionControl: true,
+      });
 
-    const icon = L.divIcon({
-      className: "",
-      html: '<div style="width:10px;height:10px;border-radius:50%;background:#00e5ff;border:2px solid #0d1117;box-shadow:0 0 8px #00e5ff88;"></div>',
-      iconSize: [10, 10],
-      iconAnchor: [5, 5],
-    });
+      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        maxZoom: 18,
+      }).addTo(map);
 
-    geoVisits.forEach((v) => {
-      const marker = L.marker([v.lat!, v.lng!], { icon }).addTo(map);
-      const time = new Date(v.ts).toLocaleString();
-      marker.bindPopup(
-        `<div style="font-family:monospace;font-size:12px;color:#e0e4ec;background:#111827;padding:8px;border-radius:6px;border:1px solid #1e293b;min-width:180px;">
-          <div style="color:#00e5ff;font-weight:bold;margin-bottom:4px;">${v.city}, ${v.country}</div>
-          <div style="color:#94a3b8;">${time}</div>
-        </div>`,
-        { className: "dark-popup" }
-      );
-    });
+      const icon = L.divIcon({
+        className: "",
+        html: '<div style="width:10px;height:10px;border-radius:50%;background:#00e5ff;border:2px solid #0d1117;box-shadow:0 0 8px #00e5ff88;"></div>',
+        iconSize: [10, 10],
+        iconAnchor: [5, 5],
+      });
 
-    if (geoVisits.length > 0) {
-      const bounds = L.latLngBounds(geoVisits.map((v) => [v.lat!, v.lng!] as [number, number]));
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 6 });
-    }
+      geoVisits.forEach((v) => {
+        const marker = L.marker([v.lat!, v.lng!], { icon }).addTo(map);
+        const time = new Date(v.ts).toLocaleString();
+        marker.bindPopup(
+          `<div style="font-family:monospace;font-size:12px;color:#e0e4ec;background:#111827;padding:8px;border-radius:6px;border:1px solid #1e293b;min-width:180px;">
+            <div style="color:#00e5ff;font-weight:bold;margin-bottom:4px;">${v.city}, ${v.country}</div>
+            <div style="color:#94a3b8;">${time}</div>
+          </div>`,
+          { className: "dark-popup" }
+        );
+      });
 
-    mapInstance.current = map;
+      if (geoVisits.length > 0) {
+        const bounds = L.latLngBounds(geoVisits.map((v) => [v.lat!, v.lng!] as [number, number]));
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 6 });
+      }
+
+      mapInstance.current = map;
+    })();
 
     return () => {
-      map.remove();
-      mapInstance.current = null;
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
     };
   }, [loading, visits]);
 
