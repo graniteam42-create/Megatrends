@@ -15,6 +15,10 @@ export const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = 
   "NXE": { symbol: "NXE", exchange: "US" },
   // Crypto
   "IBIT": { symbol: "IBIT", exchange: "US" },
+  // Benchmark proxies
+  "CRSP": { symbol: "CRSP", exchange: "US" },
+  "EWW": { symbol: "EWW", exchange: "US" },
+  "OXY": { symbol: "OXY", exchange: "US" },
   // Crash Watchlist
   "NVDA": { symbol: "NVDA", exchange: "US" },
   "AVGO": { symbol: "AVGO", exchange: "US" },

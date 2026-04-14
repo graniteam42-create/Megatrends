@@ -23,6 +23,11 @@ export const DEFAULT_PRICES: Record<string, PriceData> = {
   // === Positions: Crypto ===
   "IBIT":  { close: 52.81, change_p: 0.84, volume: 42518730, previousClose: 52.37 },
 
+  // === Benchmark Proxies ===
+  "CRSP":  { close: 42.15, change_p: -1.83, volume: 1524370, previousClose: 42.94 },
+  "EWW":   { close: 57.82, change_p: 0.73, volume: 2835914, previousClose: 57.40 },
+  "OXY":   { close: 39.27, change_p: -2.04, volume: 9812450, previousClose: 40.09 },
+
   // === Crash Watchlist ===
   "ASML":  { close: 1500.20, change_p: 1.48, volume: 1704775, previousClose: 1478.28 },
   "TSM":   { close: 369.57, change_p: -0.28, volume: 8588279, previousClose: 370.60 },

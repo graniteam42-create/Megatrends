@@ -72,6 +72,9 @@ export default function LandscapeTab({
     "CCJ": "Cameco — largest western uranium producer",
     "NXE": "NexGen Energy — high-grade uranium development",
     "WNUC": "WisdomTree Uranium & Nuclear — broad nuclear exposure",
+    "CRSP": "CRISPR Therapeutics — gene editing pioneer, synthetic biology proxy",
+    "EWW": "iShares MSCI Mexico — nearshoring & bridge state proxy",
+    "OXY": "Occidental Petroleum — carbon capture via 1PointFive DAC",
   };
 
   function arrow(col: string) {
@@ -113,7 +116,7 @@ export default function LandscapeTab({
                   <td className="px-3 py-2.5 font-semibold">
                     <div className="flex items-center gap-2.5">
                       {TREND_IMAGES[t.id] && (
-                        <img src={TREND_IMAGES[t.id].thumb} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
+                        <img src={TREND_IMAGES[t.id].thumb} alt="" className="w-24 h-10 rounded object-cover shrink-0" />
                       )}
                       {t.name}
                     </div>

@@ -19,9 +19,9 @@ const TREND_COLORS: Record<string, string> = {
 };
 
 function TrendBadges({ trendIds, trends }: { trendIds: string[]; trends: Trend[] }) {
-  if (!trendIds.length) return null;
+  if (!trendIds.length) return <span className="text-[#475569]">—</span>;
   return (
-    <div className="flex gap-1 flex-wrap mt-1.5">
+    <div className="flex gap-1 flex-wrap">
       {trendIds.map((tid) => {
         const t = trends.find((tr) => tr.id === tid);
         const color = TREND_COLORS[tid] || "#64748b";
@@ -29,10 +29,11 @@ function TrendBadges({ trendIds, trends }: { trendIds: string[]; trends: Trend[]
         return (
           <span
             key={tid}
-            className="group/trend relative px-1.5 py-[1px] rounded text-[10px] font-mono font-semibold cursor-default transition-colors"
+            className="px-1.5 py-[1px] rounded text-[10px] font-mono font-semibold cursor-default"
             style={{ background: color + "18", color }}
+            title={name}
           >
-            {name}
+            {name.length > 18 ? name.slice(0, 16) + "…" : name}
           </span>
         );
       })}
@@ -61,14 +62,12 @@ export default function PositionsTab({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [resultModel, setResultModel] = useState("");
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ t1: true });
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const toggle = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }));
 
   const statusColor = (s: string) =>
     s === "GO" ? "#00e676" : s === "APPROACHING" ? "#ffea00" : "#94a3b8";
-  const statusIcon = (s: string) =>
-    s === "GO" ? "\u2705" : s === "APPROACHING" ? "\uD83D\uDFE1" : "\u23F3";
 
   function getVix() {
     return prices["VIX"]?.close ?? null;
@@ -119,73 +118,56 @@ export default function PositionsTab({
         {POSITIONS.filter((p) => p.dir === "LONG").length} longs &middot; {POSITIONS.filter((p) => p.dir === "SHORT").length} shorts &middot; {POSITIONS.filter((p) => p.dir === "HEDGE").length} hedges &middot; {CRASH_WATCHLIST.length} on crash watchlist
       </p>
 
-      {[1, 2, 3, 4].map((tier) => {
-        const items = POSITIONS.filter((p) => p.tier === tier);
-        if (!items.length) return null;
-        const info = TIER_INFO[tier];
-        const key = "t" + tier;
-        const isOpen = expanded[key];
-        return (
-          <div key={tier} className="mb-3">
-            <div onClick={() => toggle(key)} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm" style={{ color: info.color }}>{isOpen ? "\u25BE" : "\u25B8"}</span>
-                <h3 className="text-sm font-semibold" style={{ color: info.color }}>{info.label}</h3>
-                <Badge color="#475569">{items.length}</Badge>
-              </div>
-              <span className="text-[11px] text-[#94a3b8]">{info.sub}</span>
-            </div>
-            {isOpen && (
-              <div className={`mt-2 ${tier === 1 ? "flex flex-col gap-2" : "grid grid-cols-2 gap-2"}`}>
-                {items.map((p, i) => {
-                  const dc = p.dir === "LONG" ? "#00e676" : p.dir === "SHORT" ? "#ff1744" : "#c084fc";
-                  const ds = dynamicStatus(p);
-                  const livePrice = safePrice(p.ticker);
-                  return (
-                    <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-3.5" style={{ borderLeft: `3px solid ${dc}` }}>
-                      <div className="flex justify-between items-center mb-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-base font-bold font-mono" style={{ color: dc }}>{p.ticker}</span>
-                          <Badge color={dc}>{p.dir}</Badge>
-                          <span className="text-[11px] text-[#475569]">{p.type}{p.fee !== "-" ? ` \u00B7 Fee: ${p.fee}` : ""}</span>
-                          {livePrice && <span className="text-[11px] text-[#00e5ff] font-mono font-semibold ml-1">${livePrice.close.toFixed(2)}</span>}
-                          {tickerPerf?.[p.ticker] && (
-                            <span className="text-[10px] font-mono ml-1.5">
-                              <span style={{ color: perfColor(tickerPerf[p.ticker].perf20d) }}>{perfText(tickerPerf[p.ticker].perf20d)}</span>
-                              <span className="text-[#475569] mx-0.5">/</span>
-                              <span style={{ color: perfColor(tickerPerf[p.ticker].perf60d) }}>{perfText(tickerPerf[p.ticker].perf60d)}</span>
-                              <span className="text-[#475569] ml-0.5 text-[9px]">20d/60d</span>
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          <span className="text-lg font-bold font-mono" style={{ color: dc }}>{p.conv}</span>
-                          <span className="block text-[9px] text-[#475569] uppercase tracking-widest">Conviction</span>
-                        </div>
-                      </div>
-                      <p className="text-[13px] font-semibold mb-1">{p.name}</p>
-                      <p className="text-xs text-[#94a3b8] leading-snug mb-1.5">{p.why}</p>
-                      <div className="flex gap-3 flex-wrap text-[11px]">
-                        <span><span className="text-[#64748b]">When: </span><span className="text-[#00e5ff]">{p.when}</span></span>
-                        <span><span className="text-[#64748b]">Corr: </span><span style={{ color: p.corr === "Anti-correlated" ? "#00e676" : p.corr === "Uncorrelated" ? "#c084fc" : "#ffea00" }}>{p.corr}</span></span>
-                      </div>
-                      <div className="flex justify-between items-end mt-1">
-                        <div className="px-2 py-[3px] rounded text-[11px] inline-block" style={{ background: statusColor(ds) + "14", color: statusColor(ds) }}>
-                          {statusIcon(ds)} {ds}
-                        </div>
-                        <TrendBadges trendIds={p.trends} trends={trends} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {/* Positions Table */}
+      <div className="overflow-x-auto rounded-[10px] border border-[#1e293b] mb-5">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="bg-white/[0.03]">
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Ticker</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Name</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Dir</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Tier</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Type</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Price</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">20D %</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">60D %</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Conv</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Status</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">When</th>
+              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Trends</th>
+            </tr>
+          </thead>
+          <tbody>
+            {POSITIONS.map((p, i) => {
+              const dc = p.dir === "LONG" ? "#00e676" : p.dir === "SHORT" ? "#ff1744" : "#c084fc";
+              const ds = dynamicStatus(p);
+              const livePrice = safePrice(p.ticker);
+              const perf = tickerPerf?.[p.ticker];
+              return (
+                <tr key={i} className="border-b border-[#1e293b] hover:bg-white/[0.03]" title={p.why}>
+                  <td className="px-3 py-2.5 font-mono font-bold" style={{ color: dc }}>{p.ticker}</td>
+                  <td className="px-3 py-2.5 text-[#cbd5e1] whitespace-nowrap">{p.name}</td>
+                  <td className="px-3 py-2.5"><Badge color={dc}>{p.dir}</Badge></td>
+                  <td className="px-3 py-2.5 font-mono" style={{ color: TIER_INFO[p.tier]?.color }}>{p.tier}</td>
+                  <td className="px-3 py-2.5 text-[#94a3b8]">{p.type}</td>
+                  <td className="px-3 py-2.5 font-mono text-[#00e5ff]">{livePrice ? `$${livePrice.close.toFixed(2)}` : "—"}</td>
+                  <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(perf?.perf20d) }}>{perf ? perfText(perf.perf20d) : "—"}</td>
+                  <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(perf?.perf60d) }}>{perf ? perfText(perf.perf60d) : "—"}</td>
+                  <td className="px-3 py-2.5 font-mono font-bold" style={{ color: dc }}>{p.conv}</td>
+                  <td className="px-3 py-2.5">
+                    <span className="px-2 py-[2px] rounded text-[11px] font-semibold" style={{ background: statusColor(ds) + "18", color: statusColor(ds) }}>{ds}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-[#94a3b8] text-[12px] whitespace-nowrap">{p.when}</td>
+                  <td className="px-3 py-2.5"><TrendBadges trendIds={p.trends} trends={trends} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-      {/* Crash Watchlist */}
-      <div className="mb-3 mt-5">
+      {/* Crash Watchlist Table */}
+      <div className="mb-5">
         <div onClick={() => toggle("crash")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-[rgba(224,64,251,0.04)] rounded-lg border border-[#4a1d8e]">
           <div className="flex items-center gap-2.5">
             <span className="text-sm text-[#e040fb]">{expanded.crash ? "\u25BE" : "\u25B8"}</span>
@@ -195,51 +177,46 @@ export default function PositionsTab({
           <span className="text-[11px] text-[#c084fc]">Quality companies to accumulate 40-60% off highs</span>
         </div>
         {expanded.crash && (
-          <div className="mt-2">
-            <p className="text-[11px] text-[#94a3b8] mb-2.5 leading-relaxed">
-              Dotcom lesson: Amazon $107 to $7 to $3,500. The crash kills junk but drags quality hardware/infra companies down too. Hardware &gt; Software. Physical assets &gt; Digital promises.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {CRASH_WATCHLIST.map((w, i) => {
-                const isSpec = w.quality.startsWith("SPEC");
-                const livePrice = safePrice(w.ticker);
-                const highNum = parseFloat(w.high.replace(/[^0-9.]/g, ""));
-                const offHighLive = livePrice && highNum ? ((livePrice.close / highNum - 1) * 100).toFixed(1) : null;
-                return (
-                  <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-3" style={{ borderLeft: `3px solid ${isSpec ? "#ff9100" : "#e040fb"}` }}>
-                    <div className="flex justify-between items-center mb-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[15px] font-bold font-mono" style={{ color: isSpec ? "#ff9100" : "#e040fb" }}>{w.ticker}</span>
-                        <Badge color={isSpec ? "#ff9100" : "#e040fb"}>{w.sector}</Badge>
-                      </div>
-                      <span className="text-[11px] text-[#475569] font-mono">{w.maxPos}</span>
-                    </div>
-                    <p className="text-xs font-semibold mb-1">{w.name}</p>
-                    <div className="flex gap-2 flex-wrap mb-1.5 text-[11px]">
-                      <span className="px-1.5 py-[2px] rounded bg-white/5">
-                        <span className="text-[#64748b]">Now: </span>
-                        <span className="text-[#e0e4ec] font-semibold">{livePrice ? `$${livePrice.close.toFixed(2)}` : w.now}</span>
-                      </span>
-                      <span className="px-1.5 py-[2px] rounded bg-white/5">
-                        <span className="text-[#64748b]">High: </span><span className="text-[#94a3b8]">{w.high}</span>
-                      </span>
-                      <span className="px-1.5 py-[2px] rounded" style={{ background: (offHighLive ? parseFloat(offHighLive) : parseInt(w.offHigh)) < -30 ? "rgba(0,230,118,0.1)" : "rgba(255,234,0,0.08)" }}>
-                        <span className="text-[#64748b]">Off high: </span>
-                        <span className="font-semibold" style={{ color: (offHighLive ? parseFloat(offHighLive) : parseInt(w.offHigh)) < -30 ? "#00e676" : "#ffea00" }}>
-                          {offHighLive ? `${offHighLive}%` : w.offHigh}
-                        </span>
-                      </span>
-                    </div>
-                    <div className="px-2 py-1 bg-[rgba(224,64,251,0.06)] rounded mb-1">
-                      <span className="text-[11px] text-[#64748b]">Buy zone: </span>
-                      <span className="text-[11px] text-[#e040fb] font-semibold">{w.buyPrice}</span>
-                    </div>
-                    <p className="text-[10px] text-[#94a3b8] leading-snug mt-0.5">{w.quality}</p>
-                    <TrendBadges trendIds={w.trends} trends={trends} />
-                  </div>
-                );
-              })}
-            </div>
+          <div className="mt-2 overflow-x-auto rounded-[10px] border border-[#1e293b]">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="bg-white/[0.03]">
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Ticker</th>
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Name</th>
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Sector</th>
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Now</th>
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">High</th>
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Off High</th>
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Buy Zone</th>
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Max Pos</th>
+                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Trends</th>
+                </tr>
+              </thead>
+              <tbody>
+                {CRASH_WATCHLIST.map((w, i) => {
+                  const isSpec = w.quality.startsWith("SPEC");
+                  const livePrice = safePrice(w.ticker);
+                  const highNum = parseFloat(w.high.replace(/[^0-9.]/g, ""));
+                  const offHighLive = livePrice && highNum ? ((livePrice.close / highNum - 1) * 100).toFixed(1) : null;
+                  const offVal = offHighLive ? parseFloat(offHighLive) : parseInt(w.offHigh);
+                  return (
+                    <tr key={i} className="border-b border-[#1e293b] hover:bg-white/[0.03]" title={w.quality}>
+                      <td className="px-3 py-2.5 font-mono font-bold" style={{ color: isSpec ? "#ff9100" : "#e040fb" }}>{w.ticker}</td>
+                      <td className="px-3 py-2.5 text-[#cbd5e1] whitespace-nowrap">{w.name}</td>
+                      <td className="px-3 py-2.5"><Badge color={isSpec ? "#ff9100" : "#e040fb"}>{w.sector}</Badge></td>
+                      <td className="px-3 py-2.5 font-mono text-[#00e5ff]">{livePrice ? `$${livePrice.close.toFixed(2)}` : w.now}</td>
+                      <td className="px-3 py-2.5 font-mono text-[#94a3b8]">{w.high}</td>
+                      <td className="px-3 py-2.5 font-mono font-semibold" style={{ color: offVal < -30 ? "#00e676" : "#ffea00" }}>
+                        {offHighLive ? `${offHighLive}%` : w.offHigh}
+                      </td>
+                      <td className="px-3 py-2.5 font-mono text-[#e040fb] font-semibold">{w.buyPrice}</td>
+                      <td className="px-3 py-2.5 font-mono text-[#94a3b8]">{w.maxPos}</td>
+                      <td className="px-3 py-2.5"><TrendBadges trendIds={w.trends} trends={trends} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -281,9 +258,9 @@ export default function PositionsTab({
               const lc = l.side === "LONG" ? "#00e676" : "#ff1744";
               return (
                 <div key={i} className="px-2.5 py-2.5 rounded-md" style={{ background: l.side === "LONG" ? "rgba(0,230,118,0.05)" : "rgba(255,23,68,0.05)", borderLeft: `3px solid ${lc}` }}>
-                  <div className="flex justify-between mb-1"><Badge color={lc}>{l.side}</Badge><span className="text-[11px] text-[#64748b] font-mono">{l.alloc}</span></div>
+                  <div className="flex justify-between mb-1"><Badge color={lc}>{l.side}</Badge><span className="text-[11px] text-[#94a3b8] font-mono">{l.alloc}</span></div>
                   <p className="text-xs text-[#cbd5e1] mb-0.5">{l.inst}</p>
-                  <p className="text-[10px] text-[#64748b] italic">{l.note}</p>
+                  <p className="text-[10px] text-[#94a3b8] italic">{l.note}</p>
                 </div>
               );
             })}
@@ -295,7 +272,7 @@ export default function PositionsTab({
       <div className="mb-3">
         <div onClick={() => toggle("frameworks")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
           <div className="flex items-center gap-2.5">
-            <span className="text-sm text-[#64748b]">{expanded.frameworks ? "\u25BE" : "\u25B8"}</span>
+            <span className="text-sm text-[#94a3b8]">{expanded.frameworks ? "\u25BE" : "\u25B8"}</span>
             <h3 className="text-sm font-semibold text-[#94a3b8]">Key Frameworks</h3>
             <Badge color="#475569">{KEY_CONCEPTS.length}</Badge>
           </div>
@@ -312,16 +289,30 @@ export default function PositionsTab({
         )}
       </div>
 
-      {loading && (
-        <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-10 text-center animate-pulse mt-4">
-          <div className="inline-block w-4 h-4 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
-          <p className="mt-3 text-[13px] text-[#0ea5e9]">Analyzing...</p>
-        </div>
-      )}
-      {result && !loading && (
-        <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-5 mt-4 animate-fadeIn">
-          <span className="text-[11px] text-[#00e676] font-mono font-semibold">ANALYSIS{resultModel ? ` via ${resultModel}` : ""}</span>
-          <div className="mt-3 text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{result}</div>
+      {/* Loading / Result Modal */}
+      {(loading || result) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0c10]/80 backdrop-blur-sm" onClick={() => !loading && setResult("")}>
+          <div className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-[#111827] border-b border-[#1e293b] px-6 py-4 flex justify-between items-center z-10">
+              <div>
+                <h3 className="text-[15px] font-bold text-[#00e5ff]">Gap Analysis</h3>
+                {resultModel && <span className="text-[11px] text-[#475569] font-mono">via {resultModel}</span>}
+              </div>
+              {!loading && (
+                <button onClick={() => setResult("")} className="text-[#64748b] hover:text-[#e0e4ec] text-lg px-2">X</button>
+              )}
+            </div>
+            <div className="px-6 py-5">
+              {loading ? (
+                <div className="py-12 text-center">
+                  <div className="inline-block w-5 h-5 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
+                  <p className="mt-3 text-[13px] text-[#0ea5e9]">Analyzing...</p>
+                </div>
+              ) : (
+                <div className="text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{result}</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
