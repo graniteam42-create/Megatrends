@@ -17,6 +17,20 @@ const TABS = [
 
 const LS_TRENDS = "tc_trends";
 const LS_SCANS = "tc_scans";
+const LS_PRICES = "tc_prices";
+const LS_PERF = "tc_perf";
+
+function today(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+function isCacheFresh(key: string): boolean {
+  try {
+    const raw = localStorage.getItem(key + "_date");
+    return raw === today();
+  } catch {}
+  return false;
+}
 
 function loadLS<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
@@ -124,17 +138,34 @@ export default function TrendCompass() {
     setReady(true);
   }, []);
 
-  // Fetch prices
+  // Fetch prices - cached per day, only refetch when new day or empty
   useEffect(() => {
-    const load = () => fetch("/api/prices").then((r) => r.json()).then(setPrices).catch(() => {});
-    load();
-    const interval = setInterval(load, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    if (isCacheFresh(LS_PRICES)) {
+      const cached = loadLS<Record<string, PriceData> | null>(LS_PRICES, null);
+      if (cached && Object.keys(cached).length) { setPrices(cached); return; }
+    }
+    fetch("/api/prices").then((r) => r.json()).then((data) => {
+      if (data && typeof data === "object" && !data.error) {
+        setPrices(data);
+        saveLS(LS_PRICES, data);
+        try { localStorage.setItem(LS_PRICES + "_date", today()); } catch {}
+      }
+    }).catch(() => {});
   }, []);
 
-  // Fetch historical performance (20d/60d) - less frequently
+  // Fetch historical performance - cached per day
   useEffect(() => {
-    fetch("/api/performance").then((r) => r.json()).then(setPerformance).catch(() => {});
+    if (isCacheFresh(LS_PERF)) {
+      const cached = loadLS<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }> | null>(LS_PERF, null);
+      if (cached && Object.keys(cached).length) { setPerformance(cached); return; }
+    }
+    fetch("/api/performance").then((r) => r.json()).then((data) => {
+      if (data && typeof data === "object" && !data.error) {
+        setPerformance(data);
+        saveLS(LS_PERF, data);
+        try { localStorage.setItem(LS_PERF + "_date", today()); } catch {}
+      }
+    }).catch(() => {});
   }, []);
 
   return (
