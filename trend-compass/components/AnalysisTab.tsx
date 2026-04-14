@@ -51,6 +51,10 @@ export default function AnalysisTab({
     }
   }, [focusTrendId, onFocusHandled]);
 
+  // Scan modal state
+  const [scanModal, setScanModal] = useState<{ trendName: string; trendId: string } | null>(null);
+  const [scanLoading, setScanLoading] = useState(false);
+
   // Feature 1: AI-Assisted Trend Research Flow
   const [researchPhase, setResearchPhase] = useState<"idle" | "researching" | "assessing" | "ready">("idle");
   const [assessment, setAssessment] = useState("");
@@ -135,31 +139,67 @@ export default function AnalysisTab({
   }
 
   async function doScan(t: Trend) {
-    setLoading(true);
-    setResult("");
+    setScanModal({ trendName: t.name, trendId: t.id });
+    setScanLoading(true);
     try {
       const data = await callAPI(
-        "Strategic intelligence analyst. Specific tickers. Recent developments.",
-        `Scan: ${t.name}\n${t.description}\nStage: ${STAGES[t.stage]}\nThesis: ${t.thesis}\nBear: ${t.bearCase || "N/A"}\n\n1. Latest Signals\n2. Bull vs Bear\n3. Stage Assessment\n4. Mispricing\n5. Investments (tickers)\n6. Watchpoints`,
+        "Strategic intelligence analyst. Return a structured analysis using markdown headers (##) for each section. Use bullet points. Be concise - max 2-3 bullet points per section. Specific tickers.",
+        `Scan: ${t.name}\n${t.description}\nStage: ${STAGES[t.stage]}\nThesis: ${t.thesis}\nBear: ${t.bearCase || "N/A"}\n\nReturn these sections:\n## Latest Signals\n## Bull Case\n## Bear Case\n## Stage Assessment\n## Mispricing Score\n## Key Tickers\n## Watchpoints`,
         "scan"
       );
       if (data.error) {
-        setResult("Error: " + data.error);
+        setScans((p) => ({ ...p, [t.id]: { result: "Error: " + data.error, ts: new Date().toISOString(), model: "" } }));
       } else {
-        setResult(data.result);
-        setResultModel(data.model || "");
         setScans((p) => ({ ...p, [t.id]: { result: data.result, ts: new Date().toISOString(), model: data.model } }));
-        // Scroll to the scan result
-        setTimeout(() => {
-          const el = document.getElementById(`scan-${t.id}`);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 100);
       }
     } catch (e: unknown) {
-      setResult("Scan failed: " + (e instanceof Error ? e.message : "Unknown error"));
+      setScans((p) => ({ ...p, [t.id]: { result: "Scan failed: " + (e instanceof Error ? e.message : "Unknown"), ts: new Date().toISOString(), model: "" } }));
     } finally {
-      setLoading(false);
+      setScanLoading(false);
     }
+  }
+
+  function renderFormattedScan(text: string) {
+    const sections = text.split(/^##\s+/m).filter(Boolean);
+    if (sections.length <= 1) {
+      // Fallback: not markdown-structured, render with basic formatting
+      return text.split("\n").map((line, i) => {
+        if (line.startsWith("###") || line.startsWith("**#")) {
+          return <h4 key={i} className="text-[13px] font-bold text-[#00e5ff] mt-4 mb-1">{line.replace(/^[#*\s]+/, "").replace(/\*+$/, "")}</h4>;
+        }
+        if (line.match(/^\*\*[^*]+\*\*/)) {
+          return <h4 key={i} className="text-[13px] font-bold text-[#e0e4ec] mt-3 mb-1">{line.replace(/\*\*/g, "")}</h4>;
+        }
+        if (line.startsWith("- ") || line.startsWith("* ")) {
+          return <li key={i} className="text-[13px] text-[#cbd5e1] ml-4 mb-0.5 list-disc">{line.slice(2)}</li>;
+        }
+        if (line.trim() === "") return <div key={i} className="h-2" />;
+        return <p key={i} className="text-[13px] text-[#cbd5e1] mb-0.5">{line}</p>;
+      });
+    }
+    return sections.map((section, i) => {
+      const lines = section.split("\n");
+      const title = lines[0].trim();
+      const body = lines.slice(1).join("\n").trim();
+      const color = title.includes("Bull") ? "#00e676" : title.includes("Bear") ? "#ff1744" : title.includes("Ticker") ? "#00e5ff" : title.includes("Signal") ? "#ffea00" : "#c084fc";
+      return (
+        <div key={i} className="mb-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-1 h-4 rounded-full" style={{ background: color }} />
+            <h4 className="text-[13px] font-bold uppercase tracking-wider" style={{ color }}>{title}</h4>
+          </div>
+          <div className="pl-3 text-[13px] text-[#cbd5e1] leading-relaxed">
+            {body.split("\n").map((line, j) => {
+              if (line.startsWith("- ") || line.startsWith("* ")) {
+                return <li key={j} className="ml-3 mb-1 list-disc">{line.slice(2)}</li>;
+              }
+              if (line.trim() === "") return null;
+              return <p key={j} className="mb-1">{line}</p>;
+            })}
+          </div>
+        </div>
+      );
+    });
   }
 
   return (
@@ -494,12 +534,15 @@ export default function AnalysisTab({
               </div>
             )}
             {scans[t.id] && (
-              <div id={`scan-${t.id}`} className="mt-3 bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-5">
-                <div className="flex justify-between mb-2">
+              <div
+                className="mt-3 px-3.5 py-2.5 bg-[rgba(0,229,255,0.04)] rounded-md border border-[#0e4b7a33] cursor-pointer hover:border-[#0e4b7a] transition-colors flex justify-between items-center"
+                onClick={() => setScanModal({ trendName: t.name, trendId: t.id })}
+              >
+                <div className="flex items-center gap-2">
                   <span className="text-[11px] text-[#0ea5e9] font-mono font-semibold">AI SCAN{scans[t.id].model ? ` via ${scans[t.id].model}` : ""}</span>
                   <span className="text-[10px] text-[#475569]">{new Date(scans[t.id].ts).toLocaleString()}</span>
                 </div>
-                <div className="text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{scans[t.id].result}</div>
+                <span className="text-[11px] text-[#475569]">Click to view</span>
               </div>
             )}
           </div>
@@ -517,6 +560,36 @@ export default function AnalysisTab({
         <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-5 mt-4 animate-fadeIn">
           <span className="text-[11px] text-[#00e676] font-mono font-semibold">AI ANALYSIS{resultModel ? ` via ${resultModel}` : ""}</span>
           <div className="mt-3 text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{result}</div>
+        </div>
+      )}
+
+      {/* Scan Modal */}
+      {scanModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0c10]/80 backdrop-blur-sm" onClick={() => !scanLoading && setScanModal(null)}>
+          <div className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-[#111827] border-b border-[#1e293b] px-6 py-4 flex justify-between items-center">
+              <div>
+                <h3 className="text-[15px] font-bold text-[#00e5ff]">{scanModal.trendName}</h3>
+                <span className="text-[11px] text-[#475569] font-mono">AI SCAN{scans[scanModal.trendId]?.model ? ` via ${scans[scanModal.trendId].model}` : ""}</span>
+              </div>
+              {!scanLoading && (
+                <button onClick={() => setScanModal(null)} className="text-[#64748b] hover:text-[#e0e4ec] text-lg px-2">X</button>
+              )}
+            </div>
+            <div className="px-6 py-5">
+              {scanLoading ? (
+                <div className="py-12 text-center">
+                  <div className="inline-block w-5 h-5 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
+                  <p className="mt-3 text-[13px] text-[#0ea5e9]">Scanning {scanModal.trendName}...</p>
+                </div>
+              ) : scans[scanModal.trendId] ? (
+                <>
+                  <div className="text-[10px] text-[#475569] mb-4">{new Date(scans[scanModal.trendId].ts).toLocaleString()}</div>
+                  {renderFormattedScan(scans[scanModal.trendId].result)}
+                </>
+              ) : null}
+            </div>
+          </div>
         </div>
       )}
     </div>
