@@ -31,7 +31,7 @@ export function Meter({ label, value }: { label: string; value: number }) {
   const c = value > 70 ? "#00e676" : value > 50 ? "#ffea00" : "#ff9100";
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono whitespace-nowrap">{label}</span>
+      <span className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono whitespace-nowrap">{label}</span>
       <div className="h-1.5 bg-[#1e293b] rounded-sm overflow-hidden flex-1">
         <div className="h-full rounded-sm transition-[width] duration-500" style={{ width: `${value}%`, background: c }} />
       </div>

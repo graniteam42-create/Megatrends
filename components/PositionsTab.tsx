@@ -115,7 +115,7 @@ export default function PositionsTab({
           Analyze Gaps
         </button>
       </div>
-      <p className="text-[13px] text-[#64748b] mb-5">
+      <p className="text-[13px] text-[#94a3b8] mb-5">
         {POSITIONS.filter((p) => p.dir === "LONG").length} longs &middot; {POSITIONS.filter((p) => p.dir === "SHORT").length} shorts &middot; {POSITIONS.filter((p) => p.dir === "HEDGE").length} hedges &middot; {CRASH_WATCHLIST.length} on crash watchlist
       </p>
 

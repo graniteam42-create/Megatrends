@@ -193,7 +193,7 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
                 <div className={`w-3 h-3 rounded-full bg-gradient-to-br ${c.gradient} shrink-0 group-hover:scale-125 transition-transform`} />
                 <h3 className="text-[15px] font-bold tracking-wide">{c.title}</h3>
               </div>
-              <p className="text-[12px] text-[#64748b] leading-relaxed group-hover:text-[#94a3b8] transition-colors">{c.desc}</p>
+              <p className="text-[12px] text-[#94a3b8] leading-relaxed group-hover:text-[#cbd5e1] transition-colors">{c.desc}</p>
               <div className={`mt-3 text-[11px] font-mono font-semibold bg-gradient-to-r ${c.gradient} bg-clip-text text-transparent`}>
                 Run analysis &#x203A;
               </div>

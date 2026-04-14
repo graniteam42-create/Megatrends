@@ -82,7 +82,7 @@ export default function LandscapeTab({
   return (
     <div className="animate-fadeIn">
       <h2 className="text-xl font-semibold mb-1">Macro Landscape</h2>
-      <p className="text-[13px] text-[#64748b] mb-5">{trends.length} active trends</p>
+      <p className="text-[13px] text-[#94a3b8] mb-5">{trends.length} active trends</p>
 
       <div className="overflow-x-auto rounded-[10px] border border-[#1e293b]">
         <table className="w-full text-[13px]">
@@ -92,7 +92,7 @@ export default function LandscapeTab({
                 <th
                   key={c.key}
                   onClick={() => c.key !== "ticker" && toggleSort(c.key)}
-                  className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#64748b] font-medium select-none whitespace-nowrap"
+                  className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium select-none whitespace-nowrap"
                   style={{ cursor: c.key !== "ticker" ? "pointer" : "default" }}
                   title={c.tip || ""}
                 >
@@ -145,7 +145,7 @@ export default function LandscapeTab({
       </div>
 
       <h3 className="mt-8 text-base font-semibold text-[#ffea00]">Scenario Matrix</h3>
-      <p className="text-[13px] text-[#64748b] mt-1 mb-3.5">Probability-weighted futures</p>
+      <p className="text-[13px] text-[#94a3b8] mt-1 mb-3.5">Probability-weighted futures</p>
       <div className="grid grid-cols-3 gap-3.5">
         {SCENARIOS.map((sc, i) => {
           const c = sc.type === "base" ? "#ffea00" : sc.type === "bear" ? "#ff1744" : "#00e676";

@@ -117,7 +117,7 @@ export default function TrendCompass() {
         <div className="flex justify-between items-center relative">
           <div>
             <h1 className="font-mono text-[32px] font-bold tracking-wider text-[#00e5ff]">TREND COMPASS</h1>
-            <p className="text-sm text-[#64748b] tracking-[0.2em] uppercase mt-1">Strategic Intelligence System</p>
+            <p className="text-sm text-[#94a3b8] tracking-[0.2em] uppercase mt-1">Macro Trend Tracker</p>
           </div>
           <button
             onClick={refreshPrices}
@@ -139,7 +139,7 @@ export default function TrendCompass() {
             className={`px-6 py-3 text-[13px] cursor-pointer font-mono transition-colors ${
               tab === t.id
                 ? "text-[#00e5ff] font-semibold border-b-2 border-[#00e5ff] bg-[rgba(0,229,255,0.04)]"
-                : "text-[#64748b] border-b-2 border-transparent hover:text-[#94a3b8]"
+                : "text-[#94a3b8] border-b-2 border-transparent hover:text-[#cbd5e1]"
             }`}
           >
             {t.label}

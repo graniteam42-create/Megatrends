@@ -270,7 +270,7 @@ export default function AnalysisTab({
           {researchPhase === "idle" && (
             <>
               <div>
-                <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Trend Name</label>
+                <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Trend Name</label>
                 <input
                   className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-sm outline-none"
                   value={nf.name}
@@ -314,40 +314,40 @@ export default function AnalysisTab({
             <>
               <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Name</label>
+                  <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Name</label>
                   <input className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-sm outline-none" value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Horizon</label>
+                  <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Horizon</label>
                   <select className="w-full px-3 py-2 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-[13px] outline-none" value={nf.horizon} onChange={(e) => setNf({ ...nf, horizon: e.target.value })}>
                     {HORIZONS.map((h) => <option key={h}>{h}</option>)}
                   </select>
                 </div>
               </div>
               <div className="mt-3">
-                <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Description</label>
+                <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Description</label>
                 <textarea className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-[13px] outline-none resize-y min-h-[70px]" value={nf.description} onChange={(e) => setNf({ ...nf, description: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-3.5 mt-3">
                 <div>
-                  <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Stage: {STAGES[nf.stage]}</label>
+                  <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Stage: {STAGES[nf.stage]}</label>
                   <input type="range" min={0} max={4} value={nf.stage} onChange={(e) => setNf({ ...nf, stage: +e.target.value })} className="w-full" />
                 </div>
                 <div>
-                  <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Confidence: {nf.confidence}%</label>
+                  <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Confidence: {nf.confidence}%</label>
                   <input type="range" min={0} max={100} value={nf.confidence} onChange={(e) => setNf({ ...nf, confidence: +e.target.value })} className="w-full" />
                 </div>
               </div>
               <div className="mt-3">
-                <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Mispricing Score: {nf.mispricingScore}</label>
+                <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Mispricing Score: {nf.mispricingScore}</label>
                 <input type="range" min={0} max={100} value={nf.mispricingScore} onChange={(e) => setNf({ ...nf, mispricingScore: +e.target.value })} className="w-full" />
               </div>
               <div className="mt-3">
-                <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Sub-Trends (comma-separated)</label>
+                <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Sub-Trends (comma-separated)</label>
                 <input className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-[13px] outline-none" value={nf.subTrends} onChange={(e) => setNf({ ...nf, subTrends: e.target.value })} />
               </div>
               <div className="mt-3">
-                <label className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Thesis</label>
+                <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Thesis</label>
                 <textarea className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-[13px] outline-none resize-y min-h-[70px]" value={nf.thesis} onChange={(e) => setNf({ ...nf, thesis: e.target.value })} />
               </div>
               <div className="mt-3">
@@ -499,7 +499,7 @@ export default function AnalysisTab({
             </div>
             {t.thesis && (
               <div className="mt-2.5 px-3.5 py-2.5 bg-[rgba(0,229,255,0.04)] rounded-md border-l-[3px] border-l-[#00e5ff]">
-                <span className="text-[11px] text-[#64748b] uppercase tracking-widest font-mono block mb-1">Thesis</span>
+                <span className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Thesis</span>
                 <p className="text-[13px] text-[#cbd5e1] leading-relaxed">{t.thesis}</p>
               </div>
             )}
@@ -550,16 +550,30 @@ export default function AnalysisTab({
         );
       })}
 
-      {loading && (
-        <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-10 text-center animate-pulse mt-4">
-          <div className="inline-block w-4 h-4 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
-          <p className="mt-3 text-[13px] text-[#0ea5e9]">Analyzing...</p>
-        </div>
-      )}
-      {result && !loading && (
-        <div className="bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-5 mt-4 animate-fadeIn">
-          <span className="text-[11px] text-[#00e676] font-mono font-semibold">AI ANALYSIS{resultModel ? ` via ${resultModel}` : ""}</span>
-          <div className="mt-3 text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{result}</div>
+      {/* Loading / Result Modal */}
+      {(loading || result) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0c10]/80 backdrop-blur-sm" onClick={() => !loading && setResult("")}>
+          <div className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-[#111827] border-b border-[#1e293b] px-6 py-4 flex justify-between items-center z-10">
+              <div>
+                <h3 className="text-[15px] font-bold text-[#00e5ff]">AI Analysis</h3>
+                {resultModel && <span className="text-[11px] text-[#475569] font-mono">via {resultModel}</span>}
+              </div>
+              {!loading && (
+                <button onClick={() => setResult("")} className="text-[#64748b] hover:text-[#e0e4ec] text-lg px-2">X</button>
+              )}
+            </div>
+            <div className="px-6 py-5">
+              {loading ? (
+                <div className="py-12 text-center">
+                  <div className="inline-block w-5 h-5 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
+                  <p className="mt-3 text-[13px] text-[#0ea5e9]">Analyzing...</p>
+                </div>
+              ) : (
+                <div className="text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{result}</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
