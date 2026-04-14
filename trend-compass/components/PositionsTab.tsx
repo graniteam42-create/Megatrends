@@ -5,12 +5,23 @@ import type { Trend, PriceData } from "@/lib/types";
 import { POSITIONS, CRASH_WATCHLIST, CATALYSTS, TRADE_LEGS, KEY_CONCEPTS, TIER_INFO } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
 
+function perfText(v: number | null | undefined) {
+  if (v === null || v === undefined) return "";
+  return (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
+}
+function perfColor(v: number | null | undefined) {
+  if (v === null || v === undefined) return "#475569";
+  return v >= 0 ? "#00e676" : "#ff1744";
+}
+
 export default function PositionsTab({
   trends,
   prices,
+  tickerPerf,
 }: {
   trends: Trend[];
   prices: Record<string, PriceData>;
+  tickerPerf?: Record<string, { perf20d: number | null; perf60d: number | null }>;
 }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
@@ -87,7 +98,7 @@ export default function PositionsTab({
                 <h3 className="text-sm font-semibold" style={{ color: info.color }}>{info.label}</h3>
                 <Badge color="#475569">{items.length}</Badge>
               </div>
-              <span className="text-[11px] text-[#64748b]">{info.sub}</span>
+              <span className="text-[11px] text-[#94a3b8]">{info.sub}</span>
             </div>
             {isOpen && (
               <div className={`mt-2 ${tier === 1 ? "flex flex-col gap-2" : "grid grid-cols-2 gap-2"}`}>
@@ -101,10 +112,21 @@ export default function PositionsTab({
                         <div className="flex items-center gap-1.5">
                           <span className="text-base font-bold font-mono" style={{ color: dc }}>{p.ticker}</span>
                           <Badge color={dc}>{p.dir}</Badge>
-                          <span className="text-[11px] text-[#475569]">{p.type}{p.fee !== "-" ? ` \u00B7 ${p.fee}` : ""}</span>
+                          <span className="text-[11px] text-[#475569]">{p.type}{p.fee !== "-" ? ` \u00B7 Fee: ${p.fee}` : ""}</span>
                           {livePrice && <span className="text-[11px] text-[#00e5ff] font-mono font-semibold ml-1">${livePrice.close.toFixed(2)}</span>}
+                          {tickerPerf?.[p.ticker] && (
+                            <span className="text-[10px] font-mono ml-1.5">
+                              <span style={{ color: perfColor(tickerPerf[p.ticker].perf20d) }}>{perfText(tickerPerf[p.ticker].perf20d)}</span>
+                              <span className="text-[#475569] mx-0.5">/</span>
+                              <span style={{ color: perfColor(tickerPerf[p.ticker].perf60d) }}>{perfText(tickerPerf[p.ticker].perf60d)}</span>
+                              <span className="text-[#475569] ml-0.5 text-[9px]">20d/60d</span>
+                            </span>
+                          )}
                         </div>
-                        <span className="text-lg font-bold font-mono" style={{ color: dc }}>{p.conv}</span>
+                        <div className="text-right">
+                          <span className="text-lg font-bold font-mono" style={{ color: dc }}>{p.conv}</span>
+                          <span className="block text-[9px] text-[#475569] uppercase tracking-widest">Conviction</span>
+                        </div>
                       </div>
                       <p className="text-[13px] font-semibold mb-1">{p.name}</p>
                       <p className="text-xs text-[#94a3b8] leading-snug mb-1.5">{p.why}</p>
@@ -132,7 +154,7 @@ export default function PositionsTab({
             <h3 className="text-sm font-semibold text-[#e040fb]">Crash Watchlist</h3>
             <Badge color="#e040fb">{CRASH_WATCHLIST.length}</Badge>
           </div>
-          <span className="text-[11px] text-[#64748b]">Quality companies to accumulate 40-60% off highs</span>
+          <span className="text-[11px] text-[#c084fc]">Quality companies to accumulate 40-60% off highs</span>
         </div>
         {expanded.crash && (
           <div className="mt-2">
@@ -191,7 +213,7 @@ export default function PositionsTab({
             <h3 className="text-sm font-semibold text-[#ff9100]">Deployment Catalysts</h3>
             <Badge color="#ff9100">{CATALYSTS.length}</Badge>
           </div>
-          <span className="text-[11px] text-[#64748b]">Events that trigger wave transitions</span>
+          <span className="text-[11px] text-[#ff9100]">Events that trigger wave transitions</span>
         </div>
         {expanded.catalysts && (
           <div className="mt-2">
@@ -212,7 +234,7 @@ export default function PositionsTab({
             <span className="text-sm text-[#00e676]">{expanded.core ? "\u25BE" : "\u25B8"}</span>
             <h3 className="text-sm font-semibold text-[#00e676]">Core Trade Structure</h3>
           </div>
-          <span className="text-[11px] text-[#64748b]">Long Hard Assets vs. Short Bonds</span>
+          <span className="text-[11px] text-[#00e676]">Long Hard Assets vs. Short Bonds</span>
         </div>
         {expanded.core && (
           <div className="grid grid-cols-2 gap-2 mt-2">
