@@ -111,9 +111,11 @@ export default function TrendCompass() {
 
   const aiCards = [
     {
-      icon: "\uD83D\uDCCA",
       title: "Full Synthesis",
-      desc: "Trends into positions",
+      desc: "Trends into positions & timing",
+      gradient: "from-[#00e5ff] to-[#0ea5e9]",
+      glow: "rgba(0,229,255,0.15)",
+      borderHover: "#00e5ff",
       onClick: () =>
         runAI(
           "Full Synthesis",
@@ -123,9 +125,11 @@ export default function TrendCompass() {
         ),
     },
     {
-      icon: "\uD83D\uDD2E",
       title: "Discover Trends",
       desc: "Emerging trends not on radar",
+      gradient: "from-[#c084fc] to-[#7c3aed]",
+      glow: "rgba(192,132,252,0.15)",
+      borderHover: "#c084fc",
       onClick: () =>
         runAI(
           "Discover Trends",
@@ -135,9 +139,11 @@ export default function TrendCompass() {
         ),
     },
     {
-      icon: "\uD83C\uDFAF",
       title: "Challenge Framework",
       desc: "Find flaws and blind spots",
+      gradient: "from-[#ff6b6b] to-[#ff1744]",
+      glow: "rgba(255,23,68,0.15)",
+      borderHover: "#ff1744",
       onClick: () =>
         runAI(
           "Challenge Framework",
@@ -216,20 +222,28 @@ export default function TrendCompass() {
       </div>
 
       {/* AI Quick Actions - visible on all tabs */}
-      <div className="bg-[#0d1117] border-b border-[#1e293b] px-7 py-3">
-        <div className="max-w-[1400px] mx-auto flex gap-2.5 items-center">
-          <span className="text-[11px] text-[#475569] font-mono uppercase tracking-widest mr-1 shrink-0">AI</span>
+      <div className="bg-[#0d1117] border-b border-[#1e293b] px-7 py-4">
+        <div className="max-w-[1400px] mx-auto flex gap-3 items-stretch">
           {aiCards.map((c, i) => (
             <button
               key={i}
               disabled={aiLoading}
               onClick={c.onClick}
-              className="flex items-center gap-2 px-3.5 py-2 bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-lg cursor-pointer hover:border-[#00e5ff44] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative flex-1 rounded-xl overflow-hidden transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
+              style={{ boxShadow: `0 0 20px ${c.glow}` }}
             >
-              <span className="text-base">{c.icon}</span>
-              <div className="text-left">
-                <span className="text-[12px] font-semibold block leading-tight">{c.title}</span>
-                <span className="text-[10px] text-[#64748b] leading-tight">{c.desc}</span>
+              {/* Gradient top border */}
+              <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r ${c.gradient}`} />
+              {/* Card body */}
+              <div className="bg-[#111827] px-5 py-3.5 h-full flex items-center gap-3 border border-[#1e293b] border-t-0 rounded-xl group-hover:bg-[#151d2e] transition-colors">
+                {/* Accent dot */}
+                <div className={`w-2.5 h-2.5 rounded-full bg-gradient-to-br ${c.gradient} shrink-0 group-hover:scale-125 transition-transform`} />
+                <div className="text-left">
+                  <span className="text-[13px] font-bold block leading-tight tracking-wide">{c.title}</span>
+                  <span className="text-[11px] text-[#64748b] leading-tight group-hover:text-[#94a3b8] transition-colors">{c.desc}</span>
+                </div>
+                {/* Arrow */}
+                <span className="ml-auto text-[#1e293b] group-hover:text-[#475569] transition-colors text-lg">&#x203A;</span>
               </div>
             </button>
           ))}
