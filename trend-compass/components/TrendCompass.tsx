@@ -24,14 +24,6 @@ function today(): string {
   return new Date().toISOString().split("T")[0];
 }
 
-function isCacheFresh(key: string): boolean {
-  try {
-    const raw = localStorage.getItem(key + "_date");
-    return raw === today();
-  } catch {}
-  return false;
-}
-
 function loadLS<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
@@ -138,43 +130,61 @@ export default function TrendCompass() {
     setReady(true);
   }, []);
 
-  // Fetch prices - cached per day, only refetch when new day or empty
+  // Load cached prices from localStorage (manual refresh only)
+  const [pricesDate, setPricesDate] = useState("");
+  const [pricesRefreshing, setPricesRefreshing] = useState(false);
+
   useEffect(() => {
-    if (isCacheFresh(LS_PRICES)) {
-      const cached = loadLS<Record<string, PriceData> | null>(LS_PRICES, null);
-      if (cached && Object.keys(cached).length) { setPrices(cached); return; }
-    }
-    fetch("/api/prices").then((r) => r.json()).then((data) => {
-      if (data && typeof data === "object" && !data.error) {
-        setPrices(data);
-        saveLS(LS_PRICES, data);
-        try { localStorage.setItem(LS_PRICES + "_date", today()); } catch {}
-      }
-    }).catch(() => {});
+    const cached = loadLS<Record<string, PriceData> | null>(LS_PRICES, null);
+    if (cached && Object.keys(cached).length) setPrices(cached);
+    const cachedPerf = loadLS<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }> | null>(LS_PERF, null);
+    if (cachedPerf && Object.keys(cachedPerf).length) setPerformance(cachedPerf);
+    try { setPricesDate(localStorage.getItem(LS_PRICES + "_date") || ""); } catch {}
   }, []);
 
-  // Fetch historical performance - cached per day
-  useEffect(() => {
-    if (isCacheFresh(LS_PERF)) {
-      const cached = loadLS<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }> | null>(LS_PERF, null);
-      if (cached && Object.keys(cached).length) { setPerformance(cached); return; }
-    }
-    fetch("/api/performance").then((r) => r.json()).then((data) => {
-      if (data && typeof data === "object" && !data.error) {
-        setPerformance(data);
-        saveLS(LS_PERF, data);
-        try { localStorage.setItem(LS_PERF + "_date", today()); } catch {}
+  async function refreshPrices() {
+    setPricesRefreshing(true);
+    try {
+      const [priceRes, perfRes] = await Promise.all([
+        fetch("/api/prices"),
+        fetch("/api/performance"),
+      ]);
+      const priceData = await priceRes.json();
+      const perfData = await perfRes.json();
+      if (priceData && typeof priceData === "object" && !priceData.error) {
+        setPrices(priceData);
+        saveLS(LS_PRICES, priceData);
       }
-    }).catch(() => {});
-  }, []);
+      if (perfData && typeof perfData === "object" && !perfData.error) {
+        setPerformance(perfData);
+        saveLS(LS_PERF, perfData);
+      }
+      const d = today();
+      try { localStorage.setItem(LS_PRICES + "_date", d); localStorage.setItem(LS_PERF + "_date", d); } catch {}
+      setPricesDate(d);
+    } catch {}
+    setPricesRefreshing(false);
+  }
 
   return (
     <div className="font-sans bg-[#0a0c10] text-[#e0e4ec] min-h-screen">
       {/* Header */}
       <div className="bg-gradient-to-br from-[#0d1117] to-[#111827] border-b border-[#1e293b] px-7 pt-5 pb-4 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_60%_100%_at_20%_0%,rgba(0,229,255,0.06),transparent_70%)]" />
-        <h1 className="font-mono text-[22px] font-bold tracking-wider text-[#00e5ff] relative">TREND COMPASS</h1>
-        <p className="text-xs text-[#64748b] tracking-[0.15em] uppercase mt-0.5 relative">Strategic Intelligence System</p>
+        <div className="flex justify-between items-start relative">
+          <div>
+            <h1 className="font-mono text-[22px] font-bold tracking-wider text-[#00e5ff]">TREND COMPASS</h1>
+            <p className="text-xs text-[#64748b] tracking-[0.15em] uppercase mt-0.5">Strategic Intelligence System</p>
+          </div>
+          <button
+            onClick={refreshPrices}
+            disabled={pricesRefreshing}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[#1e293b] bg-white/[0.04] text-[12px] font-mono text-[#94a3b8] hover:text-[#e0e4ec] hover:border-[#00e5ff44] transition-colors disabled:opacity-50 mt-1"
+          >
+            <span className={pricesRefreshing ? "animate-spin" : ""}>&#x21bb;</span>
+            {pricesRefreshing ? "Refreshing..." : pricesDate ? `Prices: ${pricesDate}` : "Fetch Prices"}
+          </button>
+        </div>
       </div>
 
       {/* AI Quick Actions - visible on all tabs */}
