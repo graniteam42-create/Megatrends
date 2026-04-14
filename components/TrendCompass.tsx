@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Trend, PriceData } from "@/lib/types";
-import { SEED_TRENDS, STAGES } from "@/lib/seed-data";
+import { SEED_TRENDS, STAGES, DEFAULT_PRICES } from "@/lib/seed-data";
 import LandscapeTab from "./LandscapeTab";
 import AnalysisTab from "./AnalysisTab";
 import PositionsTab from "./PositionsTab";
@@ -41,7 +41,7 @@ export default function TrendCompass() {
   const [tab, setTab] = useState("landscape");
   const [trends, setTrendsRaw] = useState<Trend[]>(SEED_TRENDS);
   const [scans, setScansRaw] = useState<Record<string, { result: string; ts: string; model?: string }>>({});
-  const [prices, setPrices] = useState<Record<string, PriceData>>({});
+  const [prices, setPrices] = useState<Record<string, PriceData>>(DEFAULT_PRICES);
   const [performance, setPerformance] = useState<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }>>({});
   const [ready, setReady] = useState(false);
 
@@ -135,8 +135,9 @@ export default function TrendCompass() {
   const [pricesRefreshing, setPricesRefreshing] = useState(false);
 
   useEffect(() => {
+    // Merge cached live prices on top of hardcoded defaults
     const cached = loadLS<Record<string, PriceData> | null>(LS_PRICES, null);
-    if (cached && Object.keys(cached).length) setPrices(cached);
+    if (cached && Object.keys(cached).length) setPrices({ ...DEFAULT_PRICES, ...cached });
     const cachedPerf = loadLS<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }> | null>(LS_PERF, null);
     if (cachedPerf && Object.keys(cachedPerf).length) setPerformance(cachedPerf);
     try { setPricesDate(localStorage.getItem(LS_PRICES + "_date") || ""); } catch {}
@@ -152,7 +153,7 @@ export default function TrendCompass() {
       const priceData = await priceRes.json();
       const perfData = await perfRes.json();
       if (priceData && typeof priceData === "object" && !priceData.error) {
-        setPrices(priceData);
+        setPrices({ ...DEFAULT_PRICES, ...priceData });
         saveLS(LS_PRICES, priceData);
       }
       if (perfData && typeof perfData === "object" && !perfData.error) {
