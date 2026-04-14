@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Trend, PriceData } from "@/lib/types";
-import { SEED_TRENDS, STAGES, DEFAULT_PRICES } from "@/lib/seed-data";
+import { SEED_TRENDS, STAGES, DEFAULT_PRICES, DEFAULT_PERFORMANCE } from "@/lib/seed-data";
 import LandscapeTab from "./LandscapeTab";
 import AnalysisTab from "./AnalysisTab";
 import PositionsTab from "./PositionsTab";
@@ -42,7 +42,7 @@ export default function TrendCompass() {
   const [trends, setTrendsRaw] = useState<Trend[]>(SEED_TRENDS);
   const [scans, setScansRaw] = useState<Record<string, { result: string; ts: string; model?: string }>>({});
   const [prices, setPrices] = useState<Record<string, PriceData>>(DEFAULT_PRICES);
-  const [performance, setPerformance] = useState<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }>>({});
+  const [performance, setPerformance] = useState<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }>>(DEFAULT_PERFORMANCE);
   const [ready, setReady] = useState(false);
 
   const setTrends: typeof setTrendsRaw = useCallback((v) => {
@@ -139,7 +139,7 @@ export default function TrendCompass() {
     const cached = loadLS<Record<string, PriceData> | null>(LS_PRICES, null);
     if (cached && Object.keys(cached).length) setPrices({ ...DEFAULT_PRICES, ...cached });
     const cachedPerf = loadLS<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }> | null>(LS_PERF, null);
-    if (cachedPerf && Object.keys(cachedPerf).length) setPerformance(cachedPerf);
+    if (cachedPerf && Object.keys(cachedPerf).length) setPerformance({ ...DEFAULT_PERFORMANCE, ...cachedPerf });
     try { setPricesDate(localStorage.getItem(LS_PRICES + "_date") || ""); } catch {}
   }, []);
 
@@ -157,7 +157,7 @@ export default function TrendCompass() {
         saveLS(LS_PRICES, priceData);
       }
       if (perfData && typeof perfData === "object" && !perfData.error) {
-        setPerformance(perfData);
+        setPerformance({ ...DEFAULT_PERFORMANCE, ...perfData });
         saveLS(LS_PERF, perfData);
       }
       const d = today();
