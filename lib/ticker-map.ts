@@ -14,6 +14,11 @@ export const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = 
   // Individual stocks
   "CCJ": { symbol: "CCJ", exchange: "US" },
   "NXE": { symbol: "NXE", exchange: "US" },
+  // Thematic ETFs
+  "WRNA": { symbol: "WRNA", exchange: "XETRA" },
+  "WTMF": { symbol: "WTMF", exchange: "US" },
+  // Crypto
+  "IBIT": { symbol: "IBIT", exchange: "US" },
   // Shorts & Hedges
   "3TYS": { symbol: "3TYS", exchange: "XETRA" },
   "XBJA": { symbol: "XBJA", exchange: "XETRA" },

@@ -21,6 +21,11 @@ export const DEFAULT_PRICES: Record<string, PriceData> = {
   "CCJ":   { close: 116.70, change_p: 0.57, volume: 2644295, previousClose: 116.04 },
   "NXE":   { close: 11.86, change_p: 4.13, volume: 4670172, previousClose: 11.39 },
 
+  // === Positions: Thematic & Crypto ===
+  "WRNA":  { close: 15.82, change_p: 1.22, volume: 3210, previousClose: 15.63 },
+  "IBIT":  { close: 52.81, change_p: 0.84, volume: 42518730, previousClose: 52.37 },
+  "WTMF":  { close: 31.45, change_p: -0.19, volume: 18420, previousClose: 31.51 },
+
   // === Positions: Shorts & Hedges ===
   "3TYS":  { close: 3.90, change_p: 0, volume: 0 },  // Not on EODHD
   "XBJA":  { close: 61.575, change_p: 0.34, volume: 0, previousClose: 61.365 },

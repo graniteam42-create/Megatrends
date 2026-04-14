@@ -5,6 +5,41 @@ import type { Trend, PriceData } from "@/lib/types";
 import { POSITIONS, CRASH_WATCHLIST, CATALYSTS, TRADE_LEGS, KEY_CONCEPTS, TIER_INFO } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
 
+const TREND_COLORS: Record<string, string> = {
+  t1: "#00e5ff",
+  t2: "#ffea00",
+  t3: "#00e676",
+  t4: "#ff9100",
+  t5: "#c084fc",
+  t6: "#0ea5e9",
+  t7: "#f59e0b",
+  t8: "#ec4899",
+  t9: "#14b8a6",
+  t10: "#64748b",
+};
+
+function TrendBadges({ trendIds, trends }: { trendIds: string[]; trends: Trend[] }) {
+  if (!trendIds.length) return null;
+  return (
+    <div className="flex gap-1 flex-wrap mt-1.5">
+      {trendIds.map((tid) => {
+        const t = trends.find((tr) => tr.id === tid);
+        const color = TREND_COLORS[tid] || "#64748b";
+        const name = t?.name || tid;
+        return (
+          <span
+            key={tid}
+            className="group/trend relative px-1.5 py-[1px] rounded text-[10px] font-mono font-semibold cursor-default transition-colors"
+            style={{ background: color + "18", color }}
+          >
+            {name}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function perfText(v: number | null | undefined) {
   if (v === null || v === undefined) return "";
   return (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
@@ -134,8 +169,11 @@ export default function PositionsTab({
                         <span><span className="text-[#64748b]">When: </span><span className="text-[#00e5ff]">{p.when}</span></span>
                         <span><span className="text-[#64748b]">Corr: </span><span style={{ color: p.corr === "Anti-correlated" ? "#00e676" : p.corr === "Uncorrelated" ? "#c084fc" : "#ffea00" }}>{p.corr}</span></span>
                       </div>
-                      <div className="mt-1 px-2 py-[3px] rounded text-[11px] inline-block" style={{ background: statusColor(ds) + "14", color: statusColor(ds) }}>
-                        {statusIcon(ds)} {ds}
+                      <div className="flex justify-between items-end mt-1">
+                        <div className="px-2 py-[3px] rounded text-[11px] inline-block" style={{ background: statusColor(ds) + "14", color: statusColor(ds) }}>
+                          {statusIcon(ds)} {ds}
+                        </div>
+                        <TrendBadges trendIds={p.trends} trends={trends} />
                       </div>
                     </div>
                   );
@@ -197,6 +235,7 @@ export default function PositionsTab({
                       <span className="text-[11px] text-[#e040fb] font-semibold">{w.buyPrice}</span>
                     </div>
                     <p className="text-[10px] text-[#94a3b8] leading-snug mt-0.5">{w.quality}</p>
+                    <TrendBadges trendIds={w.trends} trends={trends} />
                   </div>
                 );
               })}
