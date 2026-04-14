@@ -7,6 +7,7 @@ import LandscapeTab from "./LandscapeTab";
 import AnalysisTab from "./AnalysisTab";
 import PositionsTab from "./PositionsTab";
 import StrategyLabTab from "./StrategyLabTab";
+import VisitLog from "./VisitLog";
 
 const TABS = [
   { id: "landscape", label: "Landscape" },
@@ -45,6 +46,7 @@ export default function TrendCompass() {
   const [prices, setPrices] = useState<Record<string, PriceData>>(DEFAULT_PRICES);
   const [performance, setPerformance] = useState<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }>>(DEFAULT_PERFORMANCE);
   const [ready, setReady] = useState(false);
+  const [showVisits, setShowVisits] = useState(false);
 
   const setTrends: typeof setTrendsRaw = useCallback((v) => {
     setTrendsRaw((prev) => {
@@ -70,6 +72,11 @@ export default function TrendCompass() {
     if (lsTrends && lsTrends.length) setTrendsRaw(lsTrends);
     if (lsScans) setScansRaw(lsScans);
     setReady(true);
+  }, []);
+
+  // Log visit on first load
+  useEffect(() => {
+    fetch("/api/visits", { method: "POST" }).catch(() => {});
   }, []);
 
   // Load cached prices from localStorage (manual refresh only)
@@ -130,7 +137,10 @@ export default function TrendCompass() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="font-mono text-[32px] font-bold tracking-wider text-[#00e5ff] drop-shadow-[0_0_12px_rgba(0,229,255,0.3)]">THE JAD GAME</h1>
-              <p className="text-sm text-[#cbd5e1] tracking-[0.2em] uppercase mt-1">Macro Trend Tracker</p>
+              <p
+                className="text-sm text-[#cbd5e1] tracking-[0.2em] uppercase mt-1 cursor-default select-none"
+                onClick={() => setShowVisits(true)}
+              >Macro Trend Tracker</p>
             </div>
             <div className="flex flex-col items-end gap-1">
               <button
@@ -173,6 +183,8 @@ export default function TrendCompass() {
         {tab === "positions" && <PositionsTab trends={trends} prices={prices} tickerPerf={Object.fromEntries(Object.values(performance).map((p) => [p.ticker, { perf20d: p.perf20d, perf60d: p.perf60d }]))} />}
         {tab === "lab" && <StrategyLabTab trends={trends} setTrends={setTrends} />}
       </div>
+
+      {showVisits && <VisitLog onClose={() => setShowVisits(false)} />}
     </div>
   );
 }
