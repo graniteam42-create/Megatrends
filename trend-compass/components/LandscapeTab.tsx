@@ -113,7 +113,7 @@ export default function LandscapeTab({
                   <td className="px-3 py-2.5 font-semibold">
                     <div className="flex items-center gap-2.5">
                       {TREND_IMAGES[t.id] && (
-                        <img src={TREND_IMAGES[t.id].url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                        <img src={TREND_IMAGES[t.id].url} alt="" className="w-12 h-12 rounded object-cover shrink-0" />
                       )}
                       {t.name}
                     </div>

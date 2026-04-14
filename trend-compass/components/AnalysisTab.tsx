@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import type { Trend } from "@/lib/types";
-import { STAGES, STAGE_COLORS, HORIZONS, CONVERGENCES } from "@/lib/seed-data";
+import { STAGES, STAGE_COLORS, HORIZONS, CONVERGENCES, TREND_IMAGES } from "@/lib/seed-data";
 import { StagePipeline, Meter, Badge } from "./StagePipeline";
 
 interface ScanData {
@@ -405,7 +405,14 @@ export default function AnalysisTab({
       {trends.map((t) => {
         const relConv = CONVERGENCES.filter((z) => z.trends.includes(t.id));
         return (
-          <div key={t.id} id={`trend-${t.id}`} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-5 mb-3.5">
+          <div key={t.id} id={`trend-${t.id}`} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] overflow-hidden mb-3.5">
+            {TREND_IMAGES[t.id] && (
+              <div className="relative h-32 w-full">
+                <img src={TREND_IMAGES[t.id].url} alt="" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#111827]" />
+              </div>
+            )}
+            <div className="p-5">
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center gap-2.5 mb-1.5">
@@ -477,6 +484,7 @@ export default function AnalysisTab({
                 <div className="text-[13px] text-[#cbd5e1] leading-[1.7] whitespace-pre-wrap">{scans[t.id].result}</div>
               </div>
             )}
+          </div>
           </div>
         );
       })}
