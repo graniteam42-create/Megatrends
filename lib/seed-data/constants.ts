@@ -1,6 +1,6 @@
 export const STAGES = ["Nascent", "Emerging", "Accelerating", "Consensus", "Overcrowded"];
 export const STAGE_COLORS = ["#00e5ff", "#00e676", "#ffea00", "#ff9100", "#ff1744"];
-export const HORIZONS = ["6-18 months", "2-5 years", "5-15 years"];
+export const HORIZONS = ["6-18 months", "1-3 years", "2-4 years", "2-5 years", "3-7 years", "3-8 years", "5-10 years", "7-12 years", "8-15 years"];
 
 export const TIER_INFO: Record<number, { label: string; sub: string; color: string }> = {
   1: { label: "Deploy Now - Physical Commodities", sub: "Anti-correlated to equities. No timing needed.", color: "#00e676" },

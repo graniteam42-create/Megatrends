@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Trend } from "@/lib/types";
 import { STAGES, STAGE_COLORS, HORIZONS, CONVERGENCES } from "@/lib/seed-data";
 import { StagePipeline, Meter, Badge } from "./StagePipeline";
@@ -21,11 +21,15 @@ export default function AnalysisTab({
   setTrends,
   scans,
   setScans,
+  focusTrendId,
+  onFocusHandled,
 }: {
   trends: Trend[];
   setTrends: React.Dispatch<React.SetStateAction<Trend[]>>;
   scans: Record<string, ScanData>;
   setScans: React.Dispatch<React.SetStateAction<Record<string, ScanData>>>;
+  focusTrendId?: string | null;
+  onFocusHandled?: () => void;
 }) {
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,6 +37,19 @@ export default function AnalysisTab({
   const [resultModel, setResultModel] = useState("");
   const empty = { name: "", stage: 0, horizon: "2-5 years", confidence: 50, description: "", subTrends: "", thesis: "", bearCase: "", investmentMap: "", mispricingScore: 50 };
   const [nf, setNf] = useState(empty);
+
+  // Scroll to focused trend when navigating from Landscape
+  useEffect(() => {
+    if (focusTrendId) {
+      const el = document.getElementById(`trend-${focusTrendId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.style.outline = "2px solid #00e5ff";
+        setTimeout(() => { el.style.outline = ""; }, 2000);
+      }
+      onFocusHandled?.();
+    }
+  }, [focusTrendId, onFocusHandled]);
 
   // Feature 1: AI-Assisted Trend Research Flow
   const [researchPhase, setResearchPhase] = useState<"idle" | "researching" | "assessing" | "ready">("idle");
@@ -106,7 +123,7 @@ export default function AnalysisTab({
         "synthesis"
       );
       if (assessData.error) {
-        setAssessment("Assessment error: " + assessData.error);
+        setAssessment("Recommendation unavailable (" + assessData.error + "). You can still review the AI-populated fields and add the trend.");
       } else {
         setAssessment(assessData.result);
       }
@@ -388,7 +405,7 @@ export default function AnalysisTab({
       {trends.map((t) => {
         const relConv = CONVERGENCES.filter((z) => z.trends.includes(t.id));
         return (
-          <div key={t.id} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-5 mb-3.5">
+          <div key={t.id} id={`trend-${t.id}`} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-5 mb-3.5">
             <div className="flex justify-between items-start">
               <div className="flex-1">
                 <div className="flex items-center gap-2.5 mb-1.5">

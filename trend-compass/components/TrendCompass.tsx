@@ -39,6 +39,7 @@ function saveLS(key: string, data: unknown) {
 
 export default function TrendCompass() {
   const [tab, setTab] = useState("landscape");
+  const [focusTrendId, setFocusTrendId] = useState<string | null>(null);
   const [trends, setTrendsRaw] = useState<Trend[]>(SEED_TRENDS);
   const [scans, setScansRaw] = useState<Record<string, { result: string; ts: string; model?: string }>>({});
   const [prices, setPrices] = useState<Record<string, PriceData>>(DEFAULT_PRICES);
@@ -245,8 +246,8 @@ export default function TrendCompass() {
           </div>
         )}
 
-        {tab === "landscape" && <LandscapeTab trends={trends} onSwitchTab={setTab} performance={performance} />}
-        {tab === "analysis" && <AnalysisTab trends={trends} setTrends={setTrends} scans={scans} setScans={setScans} />}
+        {tab === "landscape" && <LandscapeTab trends={trends} onSwitchTab={(t, trendId) => { setTab(t); if (trendId) setFocusTrendId(trendId); }} performance={performance} />}
+        {tab === "analysis" && <AnalysisTab trends={trends} setTrends={setTrends} scans={scans} setScans={setScans} focusTrendId={focusTrendId} onFocusHandled={() => setFocusTrendId(null)} />}
         {tab === "positions" && <PositionsTab trends={trends} prices={prices} />}
         {tab === "lab" && <StrategyLabTab trends={trends} />}
       </div>
