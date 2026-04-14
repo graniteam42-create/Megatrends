@@ -8,3 +8,4 @@ export { CRASH_WATCHLIST } from "./crash-watchlist";
 export { TRADE_LEGS, KEY_CONCEPTS } from "./trade-legs";
 export { DEFAULT_PRICES } from "./default-prices";
 export { DEFAULT_PERFORMANCE } from "./default-performance";
+export { TREND_IMAGES } from "./trend-images";

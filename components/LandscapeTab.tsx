@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Trend } from "@/lib/types";
-import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS } from "@/lib/seed-data";
+import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS, TREND_IMAGES } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
 
 function perfColor(v: number | null) {
@@ -110,7 +110,14 @@ export default function LandscapeTab({
                   onClick={() => onSwitchTab("analysis", t.id)}
                   className="hover:bg-white/[0.03] cursor-pointer border-b border-[#1e293b]"
                 >
-                  <td className="px-3 py-2.5 font-semibold">{t.name}</td>
+                  <td className="px-3 py-2.5 font-semibold">
+                    <div className="flex items-center gap-2.5">
+                      {TREND_IMAGES[t.id] && (
+                        <img src={TREND_IMAGES[t.id].url} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                      )}
+                      {t.name}
+                    </div>
+                  </td>
                   <td className="px-3 py-2.5">
                     <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
                   </td>
