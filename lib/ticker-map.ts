@@ -5,7 +5,6 @@ export const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = 
   "WGLD": { symbol: "WGLD", exchange: "XETRA" },
   "WSLV": { symbol: "WSLV", exchange: "XETRA" },
   // Miner/Sector ETFs
-  "U3O8": { symbol: "U3O8", exchange: "LSE" },
   "WNUC": { symbol: "WNUC", exchange: "XETRA" },
   "IXJ": { symbol: "IXJ", exchange: "US" },
   "RARE": { symbol: "RARE", exchange: "XETRA" },
@@ -14,9 +13,12 @@ export const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = 
   // Individual stocks
   "CCJ": { symbol: "CCJ", exchange: "US" },
   "NXE": { symbol: "NXE", exchange: "US" },
-  // Shorts & Hedges
-  "3TYS": { symbol: "3TYS", exchange: "XETRA" },
-  "XBJA": { symbol: "XBJA", exchange: "XETRA" },
+  // Crypto
+  "IBIT": { symbol: "IBIT", exchange: "US" },
+  // Benchmark proxies
+  "CRSP": { symbol: "CRSP", exchange: "US" },
+  "EWW": { symbol: "EWW", exchange: "US" },
+  "OXY": { symbol: "OXY", exchange: "US" },
   // Crash Watchlist
   "NVDA": { symbol: "NVDA", exchange: "US" },
   "AVGO": { symbol: "AVGO", exchange: "US" },

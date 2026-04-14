@@ -10,7 +10,6 @@ export const DEFAULT_PRICES: Record<string, PriceData> = {
   "WSLV":  { close: 63.01, change_p: -2.92, volume: 11785, previousClose: 64.91 },
 
   // === Positions: Miner/Sector ETFs ===
-  "U3O8":  { close: 32.44, change_p: 0, volume: 0 },  // Not on EODHD
   "WNUC":  { close: 52.23, change_p: -1.19, volume: 8537, previousClose: 52.86 },
   "IXJ":   { close: 95.00, change_p: 0.44, volume: 50378, previousClose: 94.58 },
   "RARE":  { close: 54.12, change_p: 1.71, volume: 12870, previousClose: 53.21 },
@@ -21,9 +20,13 @@ export const DEFAULT_PRICES: Record<string, PriceData> = {
   "CCJ":   { close: 116.70, change_p: 0.57, volume: 2644295, previousClose: 116.04 },
   "NXE":   { close: 11.86, change_p: 4.13, volume: 4670172, previousClose: 11.39 },
 
-  // === Positions: Shorts & Hedges ===
-  "3TYS":  { close: 3.90, change_p: 0, volume: 0 },  // Not on EODHD
-  "XBJA":  { close: 61.575, change_p: 0.34, volume: 0, previousClose: 61.365 },
+  // === Positions: Crypto ===
+  "IBIT":  { close: 52.81, change_p: 0.84, volume: 42518730, previousClose: 52.37 },
+
+  // === Benchmark Proxies ===
+  "CRSP":  { close: 42.15, change_p: -1.83, volume: 1524370, previousClose: 42.94 },
+  "EWW":   { close: 57.82, change_p: 0.73, volume: 2835914, previousClose: 57.40 },
+  "OXY":   { close: 39.27, change_p: -2.04, volume: 9812450, previousClose: 40.09 },
 
   // === Crash Watchlist ===
   "ASML":  { close: 1500.20, change_p: 1.48, volume: 1704775, previousClose: 1478.28 },

@@ -4,8 +4,7 @@ export const TRADE_LEGS: TradeLeg[] = [
   { side: "LONG", inst: "Physical Gold - WGLD (0.12%), GBSE (EUR hedged), IAU (US)", alloc: "40%", note: "WGLD strictly better than VZLD (0.39%). Identical gold at HSBC." },
   { side: "LONG", inst: "Physical Uranium - SPUT (HANetf, EU-listed)", alloc: "20%", note: "Sprott buys yellowcake at premium. Anti-correlated." },
   { side: "LONG", inst: "Physical Copper - OD7C (WisdomTree, EU-listed)", alloc: "15%", note: "Every electrification trend needs copper. No mines until 2028+." },
-  { side: "LONG", inst: "Gold/Silver Miners - GDX, GDXJ, Franklin Gold, AuAg Silver Bullet", alloc: "25%", note: "Leverage to metal. Buy during corrections for discount." },
-  { side: "SHORT", inst: "Long-duration bonds - 3TYS (3x short 10Y, EU), Inverse Bund", alloc: "Overlay", note: "EU PRIIPs blocks US TBT. Gold overweight partially expresses this." },
+  { side: "LONG", inst: "Gold/Silver Miners - GDX, GDXJ, Franklin Gold, AuAg Silver Bullet", alloc: "25%", note: "Leverage to metal. Buy during corrections for discount. Gold overweight implicitly expresses short-bonds view." },
 ];
 
 export const KEY_CONCEPTS: KeyConcept[] = [
