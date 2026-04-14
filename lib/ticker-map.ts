@@ -2,10 +2,10 @@ export const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = 
   // Physical ETCs (EU-listed)
   "SPUT": { symbol: "SPUT", exchange: "LSE" },
   "OD7C": { symbol: "OD7C", exchange: "XETRA" },
-  "WGLD": { symbol: "WGLD", exchange: "XETRA" },
-  "WSLV": { symbol: "WSLV", exchange: "XETRA" },
+  "WGLD": { symbol: "PHAU", exchange: "LSE" },
+  "WSLV": { symbol: "PHAG", exchange: "LSE" },
   // Miner/Sector ETFs
-  "U3O8": { symbol: "U3O8", exchange: "LSE" },
+  "U3O8": { symbol: "URNU", exchange: "LSE" },
   "WNUC": { symbol: "WNUC", exchange: "XETRA" },
   "IXJ": { symbol: "IXJ", exchange: "US" },
   "RARE": { symbol: "RARE", exchange: "XETRA" },

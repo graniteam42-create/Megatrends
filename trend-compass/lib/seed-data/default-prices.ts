@@ -6,12 +6,12 @@ import type { PriceData } from "../types";
 export const DEFAULT_PRICES: Record<string, PriceData> = {
   // === Positions: Physical ETCs (EU-listed) ===
   "SPUT":  { close: 10.65, change_p: 2.11, volume: 5862, previousClose: 10.43 },
-  "OD7C":  { close: 48.20, change_p: 0, volume: 0 },     // XETRA ETC - no real-time
-  "WGLD":  { close: 265.00, change_p: 0, volume: 0 },    // XETRA ETC - no real-time
-  "WSLV":  { close: 37.80, change_p: 0, volume: 0 },     // XETRA ETC - no real-time
+  "OD7C":  { close: 48.20, change_p: 0, volume: 0 },     // No EODHD real-time available
+  "WGLD":  { close: 443.00, change_p: 1.43 },            // via PHAU.LSE
+  "WSLV":  { close: 70.63, change_p: 4.92 },             // via PHAG.LSE
 
   // === Positions: Miner/Sector ETFs ===
-  "U3O8":  { close: 16.40, change_p: 0, volume: 0 },     // LSE ETF - no real-time
+  "U3O8":  { close: 32.44, change_p: 3.92 },             // via URNU.LSE
   "WNUC":  { close: 53.86, change_p: 3.12, volume: 7491, previousClose: 52.23 },
   "IXJ":   { close: 95.02, change_p: 0.47, volume: 50378, previousClose: 94.58 },
   "RARE":  { close: 54.98, change_p: 1.59, volume: 15939, previousClose: 54.12 },
@@ -23,8 +23,8 @@ export const DEFAULT_PRICES: Record<string, PriceData> = {
   "NXE":   { close: 11.865, change_p: 4.17, volume: 3741187, previousClose: 11.39 },
 
   // === Positions: Shorts & Hedges ===
-  "3TYS":  { close: 3.90, change_p: 0, volume: 0 },      // XETRA ETP - no real-time
-  "XBJA":  { close: 43.50, change_p: 0, volume: 0 },     // XETRA ETP - no real-time
+  "3TYS":  { close: 3.90, change_p: 0, volume: 0 },      // No EODHD real-time available
+  "XBJA":  { close: 61.58, change_p: 0, volume: 0 },     // From XETRA previousClose
 
   // === Crash Watchlist ===
   "ASML":  { close: 1500.20, change_p: 1.48, volume: 1677992, previousClose: 1478.28 },
