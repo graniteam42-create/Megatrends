@@ -7,6 +7,7 @@ interface ArtworkInfo {
   imageUrl: string;
   title: string;
   artist: string;
+  date: string;
 }
 
 const ARTWORK_IDS = [
@@ -34,6 +35,7 @@ export default function LoginPage() {
             imageUrl: data.primaryImage,
             title: data.title || "",
             artist: data.artistDisplayName || "Unknown artist",
+            date: data.objectDate || "",
           });
         }
       })
@@ -101,7 +103,9 @@ export default function LoginPage() {
 
         {art && (
           <p className="text-[11px] text-[#64748b] mt-4 leading-relaxed">
-            <span className="italic">{art.title}</span> — {art.artist}
+            <span className="italic">{art.title}</span>{art.date ? ` (${art.date})` : ""}
+            <br />
+            {art.artist}
             <br />
             <span className="text-[10px] text-[#475569]">The Metropolitan Museum of Art</span>
           </p>
