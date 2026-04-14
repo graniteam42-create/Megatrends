@@ -149,6 +149,11 @@ export default function AnalysisTab({
         setResult(data.result);
         setResultModel(data.model || "");
         setScans((p) => ({ ...p, [t.id]: { result: data.result, ts: new Date().toISOString(), model: data.model } }));
+        // Scroll to the scan result
+        setTimeout(() => {
+          const el = document.getElementById(`scan-${t.id}`);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
       }
     } catch (e: unknown) {
       setResult("Scan failed: " + (e instanceof Error ? e.message : "Unknown error"));
@@ -489,7 +494,7 @@ export default function AnalysisTab({
               </div>
             )}
             {scans[t.id] && (
-              <div className="mt-3 bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-5">
+              <div id={`scan-${t.id}`} className="mt-3 bg-gradient-to-br from-[#0c1a2e] to-[#0f1623] border border-[#0e4b7a] rounded-[10px] p-5">
                 <div className="flex justify-between mb-2">
                   <span className="text-[11px] text-[#0ea5e9] font-mono font-semibold">AI SCAN{scans[t.id].model ? ` via ${scans[t.id].model}` : ""}</span>
                   <span className="text-[10px] text-[#475569]">{new Date(scans[t.id].ts).toLocaleString()}</span>
