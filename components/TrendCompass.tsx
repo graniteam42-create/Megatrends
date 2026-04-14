@@ -136,7 +136,7 @@ export default function TrendCompass() {
         <div className="relative px-7 pt-7 pb-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="font-mono text-[32px] font-bold tracking-wider text-[#00e5ff] drop-shadow-[0_0_12px_rgba(0,229,255,0.3)]">THE JAD GAME</h1>
+              <h1 className="font-mono text-[32px] font-bold tracking-wider text-[#00e5ff] drop-shadow-[0_0_12px_rgba(0,229,255,0.3)]">TREND COMPASS</h1>
               <p
                 className="text-sm text-[#cbd5e1] tracking-[0.2em] uppercase mt-1 cursor-default select-none"
                 onClick={() => setShowVisits(true)}
