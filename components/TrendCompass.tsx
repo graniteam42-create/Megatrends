@@ -134,7 +134,9 @@ export default function TrendCompass() {
   }, []);
 
   async function refreshPrices() {
-    if (pricesDate === today()) {
+    // Check if any trends are missing performance data
+    const hasMissingPerf = trends.some((t) => t.benchmarkTicker && !performance[t.id]);
+    if (pricesDate === today() && !hasMissingPerf) {
       setPricesMessage("Latest prices already fetched");
       setTimeout(() => setPricesMessage(""), 3000);
       return;
