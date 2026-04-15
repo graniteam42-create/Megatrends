@@ -10,8 +10,8 @@ function extractMainTicker(investmentMap: string): string | null {
 }
 
 function getTicker(trend: Trend): string | null {
-  // Prefer explicit benchmarkTicker, fall back to extraction from investmentMap
-  if (trend.benchmarkTicker && trend.benchmarkTicker in TICKER_MAP) {
+  // Prefer explicit benchmarkTicker (even if not in TICKER_MAP — EODHD will try .US)
+  if (trend.benchmarkTicker) {
     return trend.benchmarkTicker;
   }
   return extractMainTicker(trend.investmentMap);

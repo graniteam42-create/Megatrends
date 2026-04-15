@@ -11,13 +11,15 @@ function formatDate(d: Date): string {
 export async function fetchPrice(ticker: string): Promise<PriceData | null> {
   if (!API_KEY) return null;
   const mapping = TICKER_MAP[ticker];
-  if (!mapping) return null;
+  // Default to US exchange for unknown tickers (most AI-suggested tickers are US-listed)
+  const symbol = mapping?.symbol || ticker;
+  const exchange = mapping?.exchange || "US";
 
   // Use EOD historical endpoint (last 5 calendar days to get 2 trading days)
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - 7);
-  const url = `${BASE}/eod/${mapping.symbol}.${mapping.exchange}?from=${formatDate(from)}&to=${formatDate(to)}&period=d&api_token=${API_KEY}&fmt=json`;
+  const url = `${BASE}/eod/${symbol}.${exchange}?from=${formatDate(from)}&to=${formatDate(to)}&period=d&api_token=${API_KEY}&fmt=json`;
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
@@ -62,13 +64,14 @@ export async function fetchHistoricalPerformance(
 ): Promise<number | null> {
   if (!API_KEY) return null;
   const mapping = TICKER_MAP[ticker];
-  if (!mapping) return null;
+  const symbol = mapping?.symbol || ticker;
+  const exchange = mapping?.exchange || "US";
 
   const to = new Date();
   const from = new Date();
   from.setDate(from.getDate() - Math.ceil(days * 1.6));
 
-  const url = `${BASE}/eod/${mapping.symbol}.${mapping.exchange}?from=${formatDate(from)}&to=${formatDate(to)}&period=d&api_token=${API_KEY}&fmt=json`;
+  const url = `${BASE}/eod/${symbol}.${exchange}?from=${formatDate(from)}&to=${formatDate(to)}&period=d&api_token=${API_KEY}&fmt=json`;
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return null;
