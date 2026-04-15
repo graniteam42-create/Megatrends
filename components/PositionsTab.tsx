@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Trend, PriceData } from "@/lib/types";
 import { POSITIONS, CRASH_WATCHLIST, CATALYSTS, TRADE_LEGS, KEY_CONCEPTS, TIER_INFO } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
+import { PieChart, AllocationHistory } from "./AllocationCharts";
 
 const TREND_COLORS: Record<string, string> = {
   t1: "#00e5ff", t2: "#ffea00", t3: "#00e676", t4: "#ff9100", t5: "#c084fc",
@@ -81,6 +82,55 @@ export default function PositionsTab({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [sortCol, setSortCol] = useState<SortCol>("tier");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  // AI Allocation state
+  const [allocation, setAllocation] = useState<{ allocations: { name: string; pct: number }[]; reasoning?: string; date?: string; model?: string } | null>(null);
+  const [allocHistory, setAllocHistory] = useState<{ date: string; allocations: { name: string; pct: number }[]; reasoning?: string; model?: string }[]>([]);
+  const [allocLoading, setAllocLoading] = useState(false);
+  const [allocError, setAllocError] = useState("");
+
+  // Load cached allocation on mount
+  useEffect(() => {
+    fetch("/api/allocation")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.current) setAllocation(data.current);
+        if (data.history) setAllocHistory(data.history);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Generate / refresh allocation
+  async function generateAllocation(force?: boolean) {
+    setAllocLoading(true);
+    setAllocError("");
+    try {
+      const res = await fetch("/api/allocation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trends, positions: POSITIONS, prices, force }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setAllocError(data.error);
+      } else {
+        setAllocation(data.current);
+        if (data.history) setAllocHistory(data.history);
+      }
+    } catch (e: unknown) {
+      setAllocError(e instanceof Error ? e.message : "Failed to generate allocation");
+    } finally {
+      setAllocLoading(false);
+    }
+  }
+
+  // Auto-generate on first load if no allocation exists
+  useEffect(() => {
+    if (!allocation && !allocLoading && trends.length > 0) {
+      const timer = setTimeout(() => generateAllocation(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [allocation, trends.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }));
 
@@ -206,6 +256,62 @@ export default function PositionsTab({
             AI finds gaps, concentration risks, and missing trend coverage in your portfolio
           </span>
         </button>
+      </div>
+
+      {/* AI Portfolio Allocation */}
+      <div className="mb-6 bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-5">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="text-[15px] font-bold text-[#00e5ff]">AI Portfolio Allocation</h3>
+            <p className="text-[11px] text-[#475569] font-mono mt-0.5">
+              {allocation?.date ? `Generated ${allocation.date}` : "Not yet generated"}
+              {allocation?.model ? ` via ${allocation.model}` : ""}
+            </p>
+          </div>
+          <button
+            onClick={() => generateAllocation(true)}
+            disabled={allocLoading}
+            title="Regenerate allocation using AI. Uses Claude Sonnet (~$0.05 per call). Cached daily."
+            className="group relative px-3 py-1.5 rounded-md border border-[#1e293b] bg-white/[0.06] text-[#94a3b8] text-[12px] font-semibold font-mono hover:bg-white/[0.1] disabled:opacity-50"
+          >
+            {allocLoading ? "Generating..." : "Regenerate"}
+            <span className="absolute bottom-full right-0 mb-2 px-2 py-1 rounded bg-[#111827] border border-[#334155] text-[10px] text-[#cbd5e1] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+              AI suggests portfolio allocation based on trends, positions, and prices
+            </span>
+          </button>
+        </div>
+
+        {allocError && (
+          <div className="px-3 py-2 rounded-md bg-[rgba(255,23,68,0.08)] border border-[#ff174433] text-[12px] text-[#ff1744] mb-3">
+            {allocError}
+          </div>
+        )}
+
+        {allocLoading && !allocation && (
+          <div className="py-10 text-center">
+            <div className="inline-block w-5 h-5 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
+            <p className="mt-3 text-[13px] text-[#0ea5e9]">Generating allocation...</p>
+          </div>
+        )}
+
+        {allocation && allocation.allocations.length > 0 && (
+          <>
+            <PieChart allocations={allocation.allocations} />
+            {allocation.reasoning && (
+              <div className="mt-4 px-3.5 py-2.5 bg-[rgba(0,229,255,0.04)] rounded-md border-l-[3px] border-l-[#00e5ff]">
+                <span className="text-[11px] text-[#475569] uppercase tracking-widest font-mono block mb-1">Reasoning</span>
+                <p className="text-[12px] text-[#94a3b8] leading-relaxed">{allocation.reasoning}</p>
+              </div>
+            )}
+          </>
+        )}
+
+        {allocHistory.length > 1 && (
+          <div className="mt-5">
+            <h4 className="text-[13px] font-semibold text-[#94a3b8] mb-2">Allocation History</h4>
+            <AllocationHistory history={allocHistory} />
+          </div>
+        )}
       </div>
 
       {/* Single sortable positions table */}
