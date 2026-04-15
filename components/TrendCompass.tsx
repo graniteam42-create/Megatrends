@@ -65,6 +65,12 @@ export default function TrendCompass() {
     setScansRaw((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
       saveLS(LS_SCANS, next);
+      // Sync to server (KV) for persistence across deploys
+      fetch("/api/scans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      }).catch(() => {});
       return next;
     });
   }, []);
@@ -99,7 +105,17 @@ export default function TrendCompass() {
         .catch(() => {})
         .finally(() => setReady(true));
     }
-    if (lsScans) setScansRaw(lsScans);
+    if (lsScans && Object.keys(lsScans).length) {
+      setScansRaw(lsScans);
+    } else {
+      // Try loading scans from server too
+      fetch("/api/scans").then((r) => r.json()).then((serverScans) => {
+        if (serverScans && Object.keys(serverScans).length) {
+          setScansRaw(serverScans);
+          saveLS(LS_SCANS, serverScans);
+        }
+      }).catch(() => {});
+    }
     if (lsTrends && lsTrends.length) setReady(true);
   }, []);
 
