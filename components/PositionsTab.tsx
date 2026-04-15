@@ -268,17 +268,6 @@ export default function PositionsTab({
               {allocation?.model ? ` via ${allocation.model}` : ""}
             </p>
           </div>
-          <button
-            onClick={() => generateAllocation(true)}
-            disabled={allocLoading}
-            title="Regenerate allocation using AI. Uses Claude Sonnet (~$0.05 per call). Cached daily."
-            className="group relative px-3 py-1.5 rounded-md border border-[#1e293b] bg-white/[0.06] text-[#94a3b8] text-[12px] font-semibold font-mono hover:bg-white/[0.1] disabled:opacity-50"
-          >
-            {allocLoading ? "Generating..." : "Regenerate"}
-            <span className="absolute bottom-full right-0 mb-2 px-2 py-1 rounded bg-[#111827] border border-[#334155] text-[10px] text-[#cbd5e1] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
-              AI suggests portfolio allocation based on trends, positions, and prices
-            </span>
-          </button>
         </div>
 
         {allocError && (
