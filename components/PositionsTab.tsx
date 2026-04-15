@@ -296,7 +296,18 @@ export default function PositionsTab({
 
         {allocation && allocation.allocations.length > 0 && (
           <>
-            <PieChart allocations={allocation.allocations} />
+            {/* Pie chart + reasoning side by side */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 min-w-0">
+                <PieChart allocations={allocation.allocations} />
+              </div>
+              {allocation.reasoning && (
+                <div className="lg:w-[320px] shrink-0 px-4 py-3.5 bg-[rgba(0,229,255,0.04)] rounded-lg border border-[#1e293b] self-start">
+                  <span className="text-[11px] text-[#00e5ff] uppercase tracking-widest font-mono font-semibold block mb-2">AI Commentary</span>
+                  <p className="text-[12px] text-[#cbd5e1] leading-[1.7]">{allocation.reasoning}</p>
+                </div>
+              )}
+            </div>
 
             {/* Regime signals */}
             {(allocation as Record<string, unknown>).regime && (() => {
@@ -316,7 +327,7 @@ export default function PositionsTab({
                       const sc = s.score;
                       const color = sc >= 1 ? "#00e676" : sc >= 0.3 ? "#a3e635" : sc >= -0.3 ? "#94a3b8" : sc >= -1 ? "#ffea00" : "#ff1744";
                       return (
-                        <div key={i} className="px-2 py-1.5 rounded bg-white/[0.02] border border-[#1e293b] cursor-default group relative" title={s.interpretation}>
+                        <div key={i} className="px-2 py-1.5 rounded bg-white/[0.02] border border-[#1e293b] cursor-default" title={s.interpretation}>
                           <div className="text-[10px] text-[#475569] font-mono truncate">{s.name}</div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[13px] font-mono font-bold" style={{ color }}>{s.value !== null ? (typeof s.value === "number" ? s.value.toFixed(1) : s.value) : "—"}</span>
@@ -329,13 +340,6 @@ export default function PositionsTab({
                 </div>
               );
             })()}
-
-            {allocation.reasoning && (
-              <div className="mt-4 px-3.5 py-2.5 bg-[rgba(0,229,255,0.04)] rounded-md border-l-[3px] border-l-[#00e5ff]">
-                <span className="text-[11px] text-[#475569] uppercase tracking-widest font-mono block mb-1">Reasoning</span>
-                <p className="text-[12px] text-[#94a3b8] leading-relaxed">{allocation.reasoning}</p>
-              </div>
-            )}
           </>
         )}
 
