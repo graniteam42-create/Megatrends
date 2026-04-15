@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/review",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/allocation",
+      "schedule": "0 9 * * 1-5"
+    }
+  ]
+}

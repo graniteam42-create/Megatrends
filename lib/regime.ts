@@ -1,4 +1,5 @@
 import { fetchPrice, fetchHistoricalPerformance } from "./eodhd";
+import { fetchFredIndicators } from "./fred";
 
 export interface RegimeSignal {
   name: string;
@@ -174,6 +175,83 @@ export async function computeRegime(): Promise<RegimeAssessment> {
     else if (xle20d > -10) { score = 0.5; interp = `Energy weak ${xle20d.toFixed(1)}% — deflationary signal, reduces urgency on inflation hedges`; }
     else { score = -1; interp = `Energy crashing ${xle20d.toFixed(1)}% — demand destruction, recessionary`; }
     signals.push({ name: "Energy Sector (XLE 20d)", value: xle20d, interpretation: interp, score });
+  }
+
+  // --- FRED indicators (macro fundamentals from the source) ---
+  const fred = await fetchFredIndicators();
+
+  // 11. Yield curve (2Y-10Y spread) — recession signal
+  if (fred.yieldCurve2s10s !== null) {
+    const yc = fred.yieldCurve2s10s;
+    const prev = fred.yieldCurve2s10sPrev;
+    const trend = prev !== null ? (yc > prev ? "steepening" : "flattening") : "";
+    let score: number;
+    let interp: string;
+    if (yc < -0.5) { score = -2; interp = `Deeply inverted at ${yc.toFixed(2)}% (${trend}) — strong recession signal`; }
+    else if (yc < 0) { score = -1; interp = `Inverted at ${yc.toFixed(2)}% (${trend}) — recession watch`; }
+    else if (yc < 0.5) { score = -0.5; interp = `Flat curve at ${yc.toFixed(2)}% (${trend}) — growth uncertainty`; }
+    else if (yc < 1.5) { score = 0.5; interp = `Normal curve at ${yc.toFixed(2)}% (${trend}) — healthy term premium`; }
+    else { score = 1; interp = `Steep curve at ${yc.toFixed(2)}% (${trend}) — strong growth expectations`; }
+    signals.push({ name: "Yield Curve 2s10s (FRED)", value: yc, interpretation: interp, score });
+  }
+
+  // 12. Real yields (10Y TIPS) — financial repression gauge
+  if (fred.realYield10Y !== null) {
+    const ry = fred.realYield10Y;
+    const prev = fred.realYield10YPrev;
+    const trend = prev !== null ? (ry > prev ? "rising" : "falling") : "";
+    let score: number;
+    let interp: string;
+    if (ry < 0) { score = -1; interp = `Negative real yield ${ry.toFixed(2)}% (${trend}) — financial repression active, strong gold/hard asset signal`; }
+    else if (ry < 1) { score = -0.5; interp = `Low real yield ${ry.toFixed(2)}% (${trend}) — mild repression, supports commodity thesis`; }
+    else if (ry < 2) { score = 0; interp = `Moderate real yield ${ry.toFixed(2)}% (${trend}) — neutral for hard assets`; }
+    else { score = 1; interp = `High real yield ${ry.toFixed(2)}% (${trend}) — headwind for gold, cash more attractive`; }
+    signals.push({ name: "Real Yield 10Y (FRED)", value: ry, interpretation: interp, score });
+  }
+
+  // 13. Credit spread (BAA-AAA) — corporate stress
+  if (fred.creditSpreadBaaAaa !== null) {
+    const cs = fred.creditSpreadBaaAaa;
+    const prev = fred.creditSpreadBaaAaaPrev;
+    const trend = prev !== null ? (cs > prev ? "widening" : "tightening") : "";
+    let score: number;
+    let interp: string;
+    if (cs < 0.7) { score = 1; interp = `Tight spreads ${cs.toFixed(2)}% (${trend}) — complacency, risk appetite high`; }
+    else if (cs < 1.0) { score = 0.5; interp = `Normal spreads ${cs.toFixed(2)}% (${trend}) — healthy credit`; }
+    else if (cs < 1.5) { score = -0.5; interp = `Elevated spreads ${cs.toFixed(2)}% (${trend}) — credit stress building`; }
+    else if (cs < 2.5) { score = -1.5; interp = `Wide spreads ${cs.toFixed(2)}% (${trend}) — significant corporate stress`; }
+    else { score = -2; interp = `Crisis-level spreads ${cs.toFixed(2)}% (${trend}) — credit market seizing`; }
+    signals.push({ name: "Credit Spread BAA-AAA (FRED)", value: cs, interpretation: interp, score });
+  }
+
+  // 14. High Yield OAS — junk bond risk premium
+  if (fred.hyOAS !== null) {
+    const oas = fred.hyOAS;
+    const prev = fred.hyOASPrev;
+    const trend = prev !== null ? (oas > prev ? "widening" : "tightening") : "";
+    let score: number;
+    let interp: string;
+    if (oas < 3) { score = 1; interp = `Tight HY OAS ${oas.toFixed(0)}bp (${trend}) — risk-on, complacency`; }
+    else if (oas < 4) { score = 0.5; interp = `Normal HY OAS ${oas.toFixed(0)}bp (${trend})`; }
+    else if (oas < 5.5) { score = -0.5; interp = `Elevated HY OAS ${oas.toFixed(0)}bp (${trend}) — stress emerging`; }
+    else if (oas < 8) { score = -1.5; interp = `High HY OAS ${oas.toFixed(0)}bp (${trend}) — deploy T2 miners territory`; }
+    else { score = -2; interp = `Extreme HY OAS ${oas.toFixed(0)}bp (${trend}) — crisis, deploy crash watchlist`; }
+    signals.push({ name: "HY OAS (FRED)", value: oas, interpretation: interp, score });
+  }
+
+  // 15. 5Y Breakeven inflation — inflation expectations
+  if (fred.breakeven5Y !== null) {
+    const be = fred.breakeven5Y;
+    const prev = fred.breakeven5YPrev;
+    const trend = prev !== null ? (be > prev ? "rising" : "falling") : "";
+    let score: number;
+    let interp: string;
+    if (be > 3.5) { score = -1.5; interp = `High inflation expectations ${be.toFixed(2)}% (${trend}) — overweight inflation hedges (gold, TIPS, commodities)`; }
+    else if (be > 2.5) { score = -0.5; interp = `Above-target inflation ${be.toFixed(2)}% (${trend}) — supports commodity thesis`; }
+    else if (be > 2.0) { score = 0; interp = `On-target inflation ${be.toFixed(2)}% (${trend}) — neutral`; }
+    else if (be > 1.5) { score = 0.5; interp = `Low inflation expectations ${be.toFixed(2)}% (${trend}) — less urgency for inflation hedges`; }
+    else { score = 1; interp = `Deflation risk ${be.toFixed(2)}% (${trend}) — reduce commodity exposure, favor cash/bonds`; }
+    signals.push({ name: "Breakeven Inflation 5Y (FRED)", value: be, interpretation: interp, score });
   }
 
   // Compute overall regime
