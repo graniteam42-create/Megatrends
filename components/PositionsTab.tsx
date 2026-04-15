@@ -315,20 +315,20 @@ export default function PositionsTab({
               const regimeColor = r.regime === "CALM" ? "#00e676" : r.regime === "CAUTIOUS" ? "#ffea00" : r.regime === "STRESSED" ? "#ff9100" : "#ff1744";
               return (
                 <div className="mt-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[11px] text-[#475569] uppercase tracking-widest font-mono">Market Regime</span>
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono">Market Regime</span>
                     <span className="px-2 py-[2px] rounded text-[11px] font-bold font-mono" style={{ background: regimeColor + "18", color: regimeColor }}>
                       {r.regime}
                     </span>
-                    <span className="text-[11px] text-[#475569] font-mono">score {r.overallScore.toFixed(2)} | deploy T{r.deployableTiers.join(",T")} | eq. cap {r.equityCorrelationCap}%</span>
+                    <span className="text-[11px] text-[#94a3b8] font-mono">score {r.overallScore.toFixed(2)} | deploy T{r.deployableTiers.join(",T")} | eq. cap {r.equityCorrelationCap}%</span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
                     {r.signals.map((s, i) => {
                       const sc = s.score;
-                      const color = sc >= 1 ? "#00e676" : sc >= 0.3 ? "#a3e635" : sc >= -0.3 ? "#94a3b8" : sc >= -1 ? "#ffea00" : "#ff1744";
+                      const color = sc >= 1 ? "#00e676" : sc >= 0.3 ? "#a3e635" : sc >= -0.3 ? "#cbd5e1" : sc >= -1 ? "#ffea00" : "#ff1744";
                       return (
-                        <div key={i} className="px-2 py-1.5 rounded bg-white/[0.02] border border-[#1e293b] cursor-default" title={s.interpretation}>
-                          <div className="text-[10px] text-[#475569] font-mono truncate">{s.name}</div>
+                        <div key={i} className="px-2 py-1.5 rounded bg-white/[0.03] border border-[#1e293b] cursor-default" title={s.interpretation}>
+                          <div className="text-[10px] text-[#94a3b8] font-mono truncate">{s.name}</div>
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <span className="text-[13px] font-mono font-bold" style={{ color }}>{s.value !== null ? (typeof s.value === "number" ? s.value.toFixed(1) : s.value) : "—"}</span>
                             <span className="text-[9px] font-mono" style={{ color }}>{sc > 0 ? "+" : ""}{sc}</span>
