@@ -12,6 +12,7 @@ export interface Trend {
   investmentMap: string;
   mispricingScore: number;
   benchmarkTicker?: string;
+  image?: { url: string; thumb: string; credit: string };
 }
 
 export interface Scenario {

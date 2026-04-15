@@ -110,7 +110,7 @@ export default function LandscapeTab({
               const p = performance[t.id];
               // Use benchmarkTicker from trend itself, fall back to performance data
               const ticker = t.benchmarkTicker || p?.ticker;
-              const img = getTrendImage(t.id, t.name, t.description);
+              const img = getTrendImage(t.id, t.name, t.description, t.image);
               return (
                 <tr
                   key={t.id}

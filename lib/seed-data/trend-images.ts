@@ -25,8 +25,8 @@ const FALLBACK_IMAGES: { keywords: string[]; url: string; thumb: string }[] = [
     url: "https://images.pexels.com/photos/1446076/pexels-photo-1446076.jpeg?auto=compress&cs=tinysrgb&w=1280",
     thumb: "https://images.pexels.com/photos/1446076/pexels-photo-1446076.jpeg?auto=compress&cs=tinysrgb&w=200&h=80&fit=crop" },
   { keywords: ["longevity", "anti-aging", "life extension", "lifespan"],
-    url: "https://images.pexels.com/photos/3825586/pexels-photo-3825586.jpeg?auto=compress&cs=tinysrgb&w=1280",
-    thumb: "https://images.pexels.com/photos/3825586/pexels-photo-3825586.jpeg?auto=compress&cs=tinysrgb&w=200&h=80&fit=crop" },
+    url: "https://images.pexels.com/photos/3938023/pexels-photo-3938023.jpeg?auto=compress&cs=tinysrgb&w=1280",
+    thumb: "https://images.pexels.com/photos/3938023/pexels-photo-3938023.jpeg?auto=compress&cs=tinysrgb&w=200&h=80&fit=crop" },
   { keywords: ["space", "satellite", "orbit", "launch", "aerospace"],
     url: "https://images.pexels.com/photos/586056/pexels-photo-586056.jpeg?auto=compress&cs=tinysrgb&w=1280",
     thumb: "https://images.pexels.com/photos/586056/pexels-photo-586056.jpeg?auto=compress&cs=tinysrgb&w=200&h=80&fit=crop" },
@@ -80,14 +80,20 @@ const DEFAULT_TREND_IMAGE = {
 };
 
 /**
- * Get image for any trend — seed trends use hardcoded images,
- * custom trends use keyword matching against name + description.
+ * Get image for any trend — checks in order:
+ * 1. Trend's own stored image (from Pexels API at add time)
+ * 2. Hardcoded image for seed trends (t1-t10)
+ * 3. Keyword-based fallback matching
+ * 4. Default generic image
  */
-export function getTrendImage(trendId: string, name: string, description?: string): { url: string; thumb: string; credit: string } | undefined {
-  // Use hardcoded image if available
+export function getTrendImage(trendId: string, name: string, description?: string, trendImage?: { url: string; thumb: string; credit: string }): { url: string; thumb: string; credit: string } | undefined {
+  // Trend's own dynamically fetched image (custom trends)
+  if (trendImage) return trendImage;
+
+  // Hardcoded image for seed trends
   if (TREND_IMAGES[trendId]) return TREND_IMAGES[trendId];
 
-  // For custom trends, try keyword matching
+  // For custom trends without a stored image, try keyword matching
   const text = `${name} ${description || ""}`.toLowerCase();
   for (const fallback of FALLBACK_IMAGES) {
     if (fallback.keywords.some((kw) => text.includes(kw))) {

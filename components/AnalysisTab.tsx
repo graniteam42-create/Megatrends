@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import type { Trend } from "@/lib/types";
 import { STAGES, STAGE_COLORS, HORIZONS, CONVERGENCES, getTrendImage } from "@/lib/seed-data";
 import { extractBenchmarkTicker } from "@/lib/ticker-map";
+import { fetchTrendImage } from "@/lib/fetch-trend-image";
 import { StagePipeline, Meter, Badge } from "./StagePipeline";
 
 interface ScanData {
@@ -38,7 +39,7 @@ export default function AnalysisTab({
   const [resultModel, setResultModel] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
-  const empty = { name: "", stage: 0, horizon: "2-5 years", confidence: 50, description: "", subTrends: "", thesis: "", bearCase: "", investmentMap: "", mispricingScore: 50 };
+  const empty = { name: "", stage: 0, horizon: "2-5 years", confidence: 50, description: "", subTrends: "", thesis: "", bearCase: "", investmentMap: "", mispricingScore: 50, benchmarkTicker: "" };
   const [nf, setNf] = useState(empty);
 
   // Scroll to focused trend when navigating from Landscape
@@ -74,25 +75,28 @@ export default function AnalysisTab({
     return res.json();
   }
 
-  function addTrend() {
+  async function addTrend() {
     const investMap = typeof nf.investmentMap === "string" ? nf.investmentMap : "";
-    setTrends((p) => [
-      ...p,
-      {
-        ...nf,
-        id: "t" + Date.now(),
-        subTrends: nf.subTrends.split(",").map((x: string) => x.trim()).filter(Boolean),
-        signals: [],
-        confidence: +nf.confidence,
-        stage: +nf.stage,
-        mispricingScore: +nf.mispricingScore,
-        benchmarkTicker: extractBenchmarkTicker(investMap),
-      } as unknown as Trend,
-    ]);
+    const trendId = "t" + Date.now();
+    const newTrend = {
+      ...nf,
+      id: trendId,
+      subTrends: nf.subTrends.split(",").map((x: string) => x.trim()).filter(Boolean),
+      signals: [],
+      confidence: +nf.confidence,
+      stage: +nf.stage,
+      mispricingScore: +nf.mispricingScore,
+      benchmarkTicker: nf.benchmarkTicker || extractBenchmarkTicker(investMap),
+    } as unknown as Trend;
+    setTrends((p) => [...p, newTrend]);
     setNf(empty);
     setShowAdd(false);
     setResearchPhase("idle");
     setAssessment("");
+    // Fetch unique image in background
+    fetchTrendImage(nf.name).then((img) => {
+      if (img) setTrends((p) => p.map((t) => t.id === trendId ? { ...t, image: img } : t));
+    });
   }
 
   async function doResearch() {
@@ -100,7 +104,7 @@ export default function AnalysisTab({
     setResearchPhase("researching");
     try {
       const data = await callAPI(
-        "You are a strategic intelligence analyst. Given a trend name, research it thoroughly and return a JSON object with these exact fields: description (2-3 sentences), thesis (investment thesis, 1-2 sentences), bearCase (strongest counter-argument, 1-2 sentences), investmentMap (specific tickers like NVDA, ASML with Long/Short), confidence (0-100 number), mispricingScore (0-100 number), subTrends (array of 3-5 strings), stage (0-4 where 0=Nascent, 1=Emerging, 2=Accelerating, 3=Consensus, 4=Overcrowded), horizon (one of: 6-18 months, 2-5 years, 5-15 years). Return ONLY valid JSON, no markdown fences.",
+        "You are a strategic intelligence analyst. Given a trend name, research it thoroughly and return a JSON object with these exact fields: description (2-3 sentences), thesis (investment thesis, 1-2 sentences), bearCase (strongest counter-argument, 1-2 sentences), investmentMap (specific tickers like NVDA, ASML with Long/Short), benchmarkTicker (single US-listed ticker symbol that best tracks this trend, e.g. NVDA for AI or XYL for water — must be a real tradeable symbol), confidence (0-100 number), mispricingScore (0-100 number), subTrends (array of 3-5 strings), stage (0-4 where 0=Nascent, 1=Emerging, 2=Accelerating, 3=Consensus, 4=Overcrowded), horizon (one of: 6-18 months, 2-5 years, 5-15 years). Return ONLY valid JSON, no markdown fences.",
         nf.name,
         "scan"
       );
@@ -121,6 +125,7 @@ export default function AnalysisTab({
         subTrends: Array.isArray(parsed.subTrends) ? parsed.subTrends.join(", ") : (parsed.subTrends || ""),
         stage: parsed.stage ?? 0,
         horizon: parsed.horizon || "2-5 years",
+        benchmarkTicker: parsed.benchmarkTicker || "",
       });
 
       // Now get assessment
@@ -235,7 +240,7 @@ export default function AnalysisTab({
               setSuggestions([]);
               try {
                 const data = await callAPI(
-                  "Suggest 5 NEW mega-trends NOT in the user's current list. IMPORTANT: For investmentMap tickers, strongly prefer tickers available on EODHD (US-listed stocks and ETFs, or major EU-listed ETFs on XETRA/LSE). Avoid obscure EU instruments, certificates, or tickers unlikely to have price data. Return a JSON array of 5 objects, each with: name, description, thesis, bearCase, investmentMap, confidence (0-100), mispricingScore (0-100), subTrends (string array), stage (0-4), horizon (string). Return ONLY valid JSON, no markdown fences.",
+                  "Suggest 5 NEW mega-trends NOT in the user's current list. IMPORTANT: For investmentMap tickers, strongly prefer tickers available on EODHD (US-listed stocks and ETFs, or major EU-listed ETFs on XETRA/LSE). Avoid obscure EU instruments. Return a JSON array of 5 objects, each with: name, description, thesis, bearCase, investmentMap, benchmarkTicker (single US-listed ticker symbol that best tracks this trend — must be a real tradeable symbol), confidence (0-100), mispricingScore (0-100), subTrends (string array), stage (0-4), horizon (string). Return ONLY valid JSON, no markdown fences.",
                   "Current trends: " + trends.map((t) => t.name).join(", "),
                   "scan"
                 );
@@ -445,9 +450,11 @@ export default function AnalysisTab({
                   className="px-3 py-1.5 rounded-md bg-[#00e676] text-[#0a0c10] text-[12px] font-semibold font-mono flex-shrink-0"
                   onClick={() => {
                     const investMap = s.investmentMap || "";
+                    const trendId = "t" + Date.now();
+                    const trendName = s.name || "Untitled";
                     const newTrend: Trend = {
-                      id: "t" + Date.now(),
-                      name: s.name || "Untitled",
+                      id: trendId,
+                      name: trendName,
                       description: s.description || "",
                       thesis: s.thesis || "",
                       bearCase: s.bearCase || "",
@@ -458,9 +465,12 @@ export default function AnalysisTab({
                       stage: s.stage ?? 0,
                       horizon: s.horizon || "2-5 years",
                       signals: [],
-                      benchmarkTicker: extractBenchmarkTicker(investMap),
+                      benchmarkTicker: (s as Record<string, unknown>).benchmarkTicker as string || extractBenchmarkTicker(investMap),
                     };
                     setTrends((p) => [...p, newTrend]);
+                    fetchTrendImage(trendName).then((img) => {
+                      if (img) setTrends((p) => p.map((t) => t.id === trendId ? { ...t, image: img } : t));
+                    });
                     setSuggestions((prev) => prev.filter((_, idx) => idx !== i));
                   }}
                 >
@@ -481,7 +491,7 @@ export default function AnalysisTab({
         return (
           <div key={t.id} id={`trend-${t.id}`} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] overflow-hidden mb-3.5">
             {(() => {
-              const img = getTrendImage(t.id, t.name, t.description);
+              const img = getTrendImage(t.id, t.name, t.description, t.image);
               return img ? (
               <div className="relative h-44 w-full">
                 <img src={img.url} alt="" className="w-full h-full object-cover" />
