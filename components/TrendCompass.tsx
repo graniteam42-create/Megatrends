@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Trend, PriceData } from "@/lib/types";
-import { SEED_TRENDS, DEFAULT_PRICES, DEFAULT_PERFORMANCE } from "@/lib/seed-data";
+import { SEED_TRENDS, DEFAULT_PRICES, DEFAULT_PERFORMANCE, POSITIONS, CRASH_WATCHLIST } from "@/lib/seed-data";
 import { extractBenchmarkTicker } from "@/lib/ticker-map";
 import LandscapeTab from "./LandscapeTab";
 import AnalysisTab from "./AnalysisTab";
@@ -126,13 +126,22 @@ export default function TrendCompass() {
     setPricesRefreshing(true);
     setPricesMessage("");
     try {
-      // POST all trends (including user-added) so performance API can fetch their tickers
+      // Include position & watchlist tickers alongside trends so they get perf data
+      const positionTickers = [...new Set([
+        ...POSITIONS.map((p) => p.ticker),
+        ...CRASH_WATCHLIST.map((w) => w.ticker),
+      ])];
+      const tickerEntries = positionTickers
+        .filter((tk) => !trends.some((t) => t.benchmarkTicker === tk))
+        .map((tk) => ({ id: `pos_${tk}`, name: tk, benchmarkTicker: tk, investmentMap: "", stage: 0, horizon: "", confidence: 0, description: "", subTrends: [], signals: [], thesis: "", bearCase: "", mispricingScore: 0 }));
+      const allForPerf = [...trends, ...tickerEntries];
+
       const [priceRes, perfRes] = await Promise.all([
         fetch("/api/prices"),
         fetch("/api/performance", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(trends),
+          body: JSON.stringify(allForPerf),
         }),
       ]);
       const priceData = await priceRes.json();

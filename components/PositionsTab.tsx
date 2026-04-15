@@ -6,34 +6,48 @@ import { POSITIONS, CRASH_WATCHLIST, CATALYSTS, TRADE_LEGS, KEY_CONCEPTS, TIER_I
 import { Badge } from "./StagePipeline";
 
 const TREND_COLORS: Record<string, string> = {
-  t1: "#00e5ff",
-  t2: "#ffea00",
-  t3: "#00e676",
-  t4: "#ff9100",
-  t5: "#c084fc",
-  t6: "#0ea5e9",
-  t7: "#f59e0b",
-  t8: "#ec4899",
-  t9: "#14b8a6",
-  t10: "#64748b",
+  t1: "#00e5ff", t2: "#ffea00", t3: "#00e676", t4: "#ff9100", t5: "#c084fc",
+  t6: "#0ea5e9", t7: "#f59e0b", t8: "#ec4899", t9: "#14b8a6", t10: "#64748b",
 };
 
-function TrendBadges({ trendIds, trends }: { trendIds: string[]; trends: Trend[] }) {
+// Compact 2-3 letter initials for trend badges
+function trendInitials(name: string): string {
+  const abbrevs: Record<string, string> = {
+    "AI & AGI Disruption": "AI",
+    "Financial Repression & Fiat Debasement": "FR",
+    "Climate Acceleration & Energy Transition": "CE",
+    "Geopolitical Fragmentation": "GF",
+    "Demographic Inversion": "DI",
+    "Trust Crisis & Verification Economy": "TC",
+    "Commodities Financialization": "CF",
+    "Synthetic Biology": "SB",
+    "Strategic Bridge States": "BS",
+    "Carbon as Feedstock": "CO",
+  };
+  if (abbrevs[name]) return abbrevs[name];
+  // Fallback: first letter of each word (max 3)
+  return name.split(/\s+/).filter((w) => w.length > 2 && w[0] === w[0].toUpperCase()).map((w) => w[0]).slice(0, 3).join("");
+}
+
+function TrendInitialBadges({ trendIds, trends }: { trendIds: string[]; trends: Trend[] }) {
   if (!trendIds.length) return <span className="text-[#475569]">—</span>;
   return (
-    <div className="flex gap-1 flex-wrap">
+    <div className="flex gap-[3px] flex-wrap">
       {trendIds.map((tid) => {
         const t = trends.find((tr) => tr.id === tid);
         const color = TREND_COLORS[tid] || "#64748b";
         const name = t?.name || tid;
+        const initials = trendInitials(name);
         return (
           <span
             key={tid}
-            className="px-1.5 py-[1px] rounded text-[10px] font-mono font-semibold cursor-default"
-            style={{ background: color + "18", color }}
-            title={name}
+            className="inline-flex items-center justify-center w-[22px] h-[18px] rounded text-[9px] font-mono font-bold cursor-default hover:scale-125 hover:z-10 transition-transform relative group"
+            style={{ background: color + "22", color }}
           >
-            {name.length > 18 ? name.slice(0, 16) + "…" : name}
+            {initials}
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 rounded bg-[#111827] border border-[#334155] text-[10px] text-[#e0e4ec] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+              {name}
+            </span>
           </span>
         );
       })}
@@ -50,6 +64,8 @@ function perfColor(v: number | null | undefined) {
   return v >= 0 ? "#00e676" : "#ff1744";
 }
 
+type SortCol = "ticker" | "name" | "dir" | "tier" | "type" | "price" | "perf20d" | "perf60d" | "conv" | "status" | "when";
+
 export default function PositionsTab({
   trends,
   prices,
@@ -63,6 +79,8 @@ export default function PositionsTab({
   const [result, setResult] = useState("");
   const [resultModel, setResultModel] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [sortCol, setSortCol] = useState<SortCol>("tier");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const toggle = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }));
 
@@ -87,7 +105,6 @@ export default function PositionsTab({
     return p.status;
   }
 
-  // Parse buyPrice range like "$440-550" or "$25-30" into [low, high]
   function parseBuyRange(buyPrice: string): [number, number] | null {
     const match = buyPrice.match(/\$?([\d,.]+)\s*[-–]\s*\$?([\d,.]+)/);
     if (!match) return null;
@@ -105,18 +122,68 @@ export default function PositionsTab({
     const [low, high] = range;
     const price = livePrice.close;
     if (price >= low && price <= high) return "in_zone";
-    // "near zone" = within 10% above the top of buy range
     if (price > high && price <= high * 1.1) return "near_zone";
     return "above";
   }
 
+  // Sorting logic
+  function toggleSort(col: SortCol) {
+    if (sortCol === col) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortCol(col); setSortDir("asc"); }
+  }
+
+  const STATUS_ORDER: Record<string, number> = { GO: 0, APPROACHING: 1, WAIT: 2 };
+
+  const sorted = [...POSITIONS].sort((a, b) => {
+    let va: number | string, vb: number | string;
+    const pa = tickerPerf?.[a.ticker];
+    const pb = tickerPerf?.[b.ticker];
+    switch (sortCol) {
+      case "ticker": va = a.ticker; vb = b.ticker; break;
+      case "name": va = a.name; vb = b.name; break;
+      case "dir": va = a.dir; vb = b.dir; break;
+      case "tier": va = a.tier; vb = b.tier; break;
+      case "type": va = a.type; vb = b.type; break;
+      case "price": va = safePrice(a.ticker)?.close ?? -1; vb = safePrice(b.ticker)?.close ?? -1; break;
+      case "perf20d": va = pa?.perf20d ?? -9999; vb = pb?.perf20d ?? -9999; break;
+      case "perf60d": va = pa?.perf60d ?? -9999; vb = pb?.perf60d ?? -9999; break;
+      case "conv": va = a.conv; vb = b.conv; break;
+      case "status": va = STATUS_ORDER[dynamicStatus(a)] ?? 9; vb = STATUS_ORDER[dynamicStatus(b)] ?? 9; break;
+      case "when": va = a.when; vb = b.when; break;
+      default: va = 0; vb = 0;
+    }
+    const cmp = typeof va === "string" ? va.localeCompare(vb as string) : (va as number) - (vb as number);
+    return sortDir === "asc" ? cmp : -cmp;
+  });
+
+  function arrow(col: SortCol) {
+    if (sortCol !== col) return "";
+    return sortDir === "asc" ? " \u25B2" : " \u25BC";
+  }
+
+  const TH = ({ col, label, tip }: { col: SortCol; label: string; tip?: string }) => (
+    <th
+      onClick={() => toggleSort(col)}
+      className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium select-none whitespace-nowrap cursor-pointer hover:text-[#cbd5e1]"
+      title={tip}
+    >
+      {label}{arrow(col)}
+    </th>
+  );
+
   return (
     <div className="animate-fadeIn">
-      <div className="flex justify-between items-center mb-1.5">
-        <h2 className="text-xl font-semibold">Positions & Watchlist</h2>
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h2 className="text-xl font-semibold">Positions & Watchlist</h2>
+          <p className="text-[13px] text-[#94a3b8] mt-0.5">
+            {POSITIONS.filter((p) => p.dir === "LONG").length} longs · {POSITIONS.filter((p) => p.dir === "SHORT").length} shorts · {POSITIONS.filter((p) => p.dir === "HEDGE").length} hedges · {CRASH_WATCHLIST.length} on crash watchlist
+          </p>
+        </div>
         <button
-          className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50"
+          className="group relative px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50"
           disabled={loading}
+          title="AI analyzes your portfolio for gaps, concentration risks, and missing trend coverage. Uses Claude Sonnet for deep reasoning."
           onClick={async () => {
             setLoading(true); setResult("");
             try {
@@ -135,114 +202,62 @@ export default function PositionsTab({
           }}
         >
           Analyze Gaps
+          <span className="absolute bottom-full right-0 mb-2 px-3 py-2 rounded-lg bg-[#111827] border border-[#334155] text-[11px] text-[#cbd5e1] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg max-w-xs text-left normal-case">
+            AI finds gaps, concentration risks, and missing trend coverage in your portfolio
+          </span>
         </button>
       </div>
-      {/* Portfolio Summary Dashboard */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        {[
-          { label: "Longs", count: POSITIONS.filter((p) => p.dir === "LONG").length, color: "#00e676" },
-          { label: "Shorts", count: POSITIONS.filter((p) => p.dir === "SHORT").length, color: "#ff1744" },
-          { label: "Hedges", count: POSITIONS.filter((p) => p.dir === "HEDGE").length, color: "#c084fc" },
-          { label: "Watchlist", count: CRASH_WATCHLIST.length, color: "#e040fb" },
-        ].map((s) => (
-          <div key={s.label} className="bg-[#111827] border border-[#1e293b] rounded-lg px-4 py-3">
-            <div className="text-[22px] font-mono font-bold" style={{ color: s.color }}>{s.count}</div>
-            <div className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono">{s.label}</div>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-        {(() => {
-          const goCount = POSITIONS.filter((p) => dynamicStatus(p) === "GO").length;
-          const approachCount = POSITIONS.filter((p) => dynamicStatus(p) === "APPROACHING").length;
-          const waitCount = POSITIONS.filter((p) => dynamicStatus(p) === "WAIT").length;
-          const vix = getVix();
-          return [
-            { label: "GO Signals", value: String(goCount), color: "#00e676" },
-            { label: "Approaching", value: String(approachCount), color: "#ffea00" },
-            { label: "Waiting", value: String(waitCount), color: "#94a3b8" },
-            { label: "VIX", value: vix !== null ? vix.toFixed(1) : "—", color: vix !== null && vix > 30 ? "#ff1744" : "#00e5ff" },
-          ];
-        })().map((s) => (
-          <div key={s.label} className="bg-[#111827] border border-[#1e293b] rounded-lg px-4 py-3">
-            <div className="text-[22px] font-mono font-bold" style={{ color: s.color }}>{s.value}</div>
-            <div className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono">{s.label}</div>
-          </div>
-        ))}
-      </div>
 
-      {/* Positions grouped by Tier */}
-      {[1, 2, 3, 4].map((tier) => {
-        const tierPositions = POSITIONS.filter((p) => p.tier === tier);
-        if (!tierPositions.length) return null;
-        const info = TIER_INFO[tier];
-        const isOpen = expanded[`tier${tier}`] !== false; // default open
-        return (
-          <div key={tier} className="mb-4">
-            <div
-              onClick={() => setExpanded((p) => ({ ...p, [`tier${tier}`]: !isOpen }))}
-              className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 rounded-lg border border-[#1e293b] hover:border-[#334155] transition-colors"
-              style={{ background: `${info.color}06` }}
-            >
-              <div className="flex items-center gap-2.5">
-                <span className="text-sm" style={{ color: info.color }}>{isOpen ? "\u25BE" : "\u25B8"}</span>
-                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-mono font-bold" style={{ color: info.color }}>T{tier}</span>
-                  <h3 className="text-sm font-semibold" style={{ color: info.color }}>{info.label}</h3>
-                </div>
-                <Badge color={info.color}>{tierPositions.length}</Badge>
-              </div>
-              <span className="text-[11px] text-[#64748b] hidden sm:inline">{info.sub}</span>
-            </div>
-            {isOpen && (
-              <div className="mt-2 overflow-x-auto rounded-[10px] border border-[#1e293b]">
-                <table className="w-full text-[13px]">
-                  <thead>
-                    <tr className="bg-white/[0.03]">
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Ticker</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Name</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Dir</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Type</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Price</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">20D %</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">60D %</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Conv</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Status</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">When</th>
-                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Trends</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tierPositions.map((p, i) => {
-                      const dc = p.dir === "LONG" ? "#00e676" : p.dir === "SHORT" ? "#ff1744" : "#c084fc";
-                      const ds = dynamicStatus(p);
-                      const livePrice = safePrice(p.ticker);
-                      const perf = tickerPerf?.[p.ticker];
-                      return (
-                        <tr key={i} className="border-b border-[#1e293b] hover:bg-white/[0.03]" title={p.why}>
-                          <td className="px-3 py-2.5 font-mono font-bold" style={{ color: dc }}>{p.ticker}</td>
-                          <td className="px-3 py-2.5 text-[#cbd5e1] whitespace-nowrap">{p.name}</td>
-                          <td className="px-3 py-2.5"><Badge color={dc}>{p.dir}</Badge></td>
-                          <td className="px-3 py-2.5 text-[#94a3b8]">{p.type}</td>
-                          <td className="px-3 py-2.5 font-mono text-[#00e5ff]">{livePrice ? `$${livePrice.close.toFixed(2)}` : "—"}</td>
-                          <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(perf?.perf20d) }}>{perf ? perfText(perf.perf20d) : "—"}</td>
-                          <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(perf?.perf60d) }}>{perf ? perfText(perf.perf60d) : "—"}</td>
-                          <td className="px-3 py-2.5 font-mono font-bold" style={{ color: dc }}>{p.conv}</td>
-                          <td className="px-3 py-2.5">
-                            <span className="px-2 py-[2px] rounded text-[11px] font-semibold" style={{ background: statusColor(ds) + "18", color: statusColor(ds) }}>{ds}</span>
-                          </td>
-                          <td className="px-3 py-2.5 text-[#94a3b8] text-[12px] whitespace-nowrap">{p.when}</td>
-                          <td className="px-3 py-2.5"><TrendBadges trendIds={p.trends} trends={trends} /></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {/* Single sortable positions table */}
+      <div className="overflow-x-auto rounded-[10px] border border-[#1e293b] mb-5">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="bg-white/[0.03] sticky top-0">
+              <TH col="ticker" label="Ticker" />
+              <TH col="name" label="Name" />
+              <TH col="dir" label="Dir" />
+              <TH col="tier" label="Tier" tip="T1: Physical (deploy now), T2: Miners/Sectors (on correction), T3: Individual stocks, T4: Long horizon/hedges" />
+              <TH col="type" label="Type" />
+              <TH col="price" label="Price" />
+              <TH col="perf20d" label="20D %" tip="Price change over last 20 trading days" />
+              <TH col="perf60d" label="60D %" tip="Price change over last 60 trading days" />
+              <TH col="conv" label="Conv" tip="Convergence score — how many trend intersections support this position" />
+              <TH col="status" label="Status" tip="GO = deploy now, APPROACHING = nearing entry, WAIT = conditions not met" />
+              <TH col="when" label="When" tip="Entry conditions — what needs to happen before deploying" />
+              <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium whitespace-nowrap">Trends</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((p, i) => {
+              const dc = p.dir === "LONG" ? "#00e676" : p.dir === "SHORT" ? "#ff1744" : "#c084fc";
+              const ds = dynamicStatus(p);
+              const livePrice = safePrice(p.ticker);
+              const perf = tickerPerf?.[p.ticker];
+              const tierInfo = TIER_INFO[p.tier];
+              return (
+                <tr key={i} className="border-b border-[#1e293b] hover:bg-white/[0.03]" title={p.why}>
+                  <td className="px-2 py-2 font-mono font-bold" style={{ color: dc }}>{p.ticker}</td>
+                  <td className="px-2 py-2 text-[#cbd5e1] whitespace-nowrap text-[12px]">{p.name}</td>
+                  <td className="px-2 py-2"><Badge color={dc}>{p.dir}</Badge></td>
+                  <td className="px-2 py-2">
+                    <span className="font-mono text-[11px] font-bold" style={{ color: tierInfo?.color }} title={tierInfo?.label}>T{p.tier}</span>
+                  </td>
+                  <td className="px-2 py-2 text-[#94a3b8] text-[12px]">{p.type}</td>
+                  <td className="px-2 py-2 font-mono text-[#00e5ff]">{livePrice ? `$${livePrice.close.toFixed(2)}` : "—"}</td>
+                  <td className="px-2 py-2 font-mono" style={{ color: perfColor(perf?.perf20d) }}>{perf ? perfText(perf.perf20d) : "—"}</td>
+                  <td className="px-2 py-2 font-mono" style={{ color: perfColor(perf?.perf60d) }}>{perf ? perfText(perf.perf60d) : "—"}</td>
+                  <td className="px-2 py-2 font-mono font-bold" style={{ color: dc }}>{p.conv}</td>
+                  <td className="px-2 py-2">
+                    <span className="px-2 py-[2px] rounded text-[11px] font-semibold" style={{ background: statusColor(ds) + "18", color: statusColor(ds) }}>{ds}</span>
+                  </td>
+                  <td className="px-2 py-2 text-[#94a3b8] text-[11px] whitespace-nowrap">{p.when}</td>
+                  <td className="px-2 py-2"><TrendInitialBadges trendIds={p.trends} trends={trends} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
       {/* Crash Watchlist Table */}
       <div className="mb-5">
@@ -267,15 +282,15 @@ export default function PositionsTab({
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-white/[0.03]">
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Ticker</th>
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Name</th>
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Sector</th>
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Now</th>
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">High</th>
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Off High</th>
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Buy Zone</th>
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Max Pos</th>
-                  <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Trends</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Ticker</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Name</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Sector</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Now</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">High</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Off High</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Buy Zone</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Max Pos</th>
+                  <th className="px-2 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Trends</th>
                 </tr>
               </thead>
               <tbody>
@@ -293,25 +308,25 @@ export default function PositionsTab({
                       title={w.quality}
                       style={zoneStatus === "in_zone" ? { background: "rgba(0,230,118,0.06)" } : zoneStatus === "near_zone" ? { background: "rgba(255,234,0,0.04)" } : undefined}
                     >
-                      <td className="px-3 py-2.5 font-mono font-bold" style={{ color: isSpec ? "#ff9100" : "#e040fb" }}>
+                      <td className="px-2 py-2.5 font-mono font-bold" style={{ color: isSpec ? "#ff9100" : "#e040fb" }}>
                         <div className="flex items-center gap-1.5">
                           {w.ticker}
                           {zoneStatus === "in_zone" && <span className="px-1.5 py-[1px] rounded text-[9px] font-bold bg-[#00e67622] text-[#00e676] uppercase tracking-wider">BUY</span>}
                           {zoneStatus === "near_zone" && <span className="px-1.5 py-[1px] rounded text-[9px] font-bold bg-[#ffea0022] text-[#ffea00] uppercase tracking-wider">NEAR</span>}
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-[#cbd5e1] whitespace-nowrap">{w.name}</td>
-                      <td className="px-3 py-2.5"><Badge color={isSpec ? "#ff9100" : "#e040fb"}>{w.sector}</Badge></td>
-                      <td className="px-3 py-2.5 font-mono" style={{ color: zoneStatus === "in_zone" ? "#00e676" : "#00e5ff" }}>
+                      <td className="px-2 py-2.5 text-[#cbd5e1] whitespace-nowrap">{w.name}</td>
+                      <td className="px-2 py-2.5"><Badge color={isSpec ? "#ff9100" : "#e040fb"}>{w.sector}</Badge></td>
+                      <td className="px-2 py-2.5 font-mono" style={{ color: zoneStatus === "in_zone" ? "#00e676" : "#00e5ff" }}>
                         {livePrice ? `$${livePrice.close.toFixed(2)}` : w.now}
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-[#94a3b8]">{w.high}</td>
-                      <td className="px-3 py-2.5 font-mono font-semibold" style={{ color: offVal < -30 ? "#00e676" : "#ffea00" }}>
+                      <td className="px-2 py-2.5 font-mono text-[#94a3b8]">{w.high}</td>
+                      <td className="px-2 py-2.5 font-mono font-semibold" style={{ color: offVal < -30 ? "#00e676" : "#ffea00" }}>
                         {offHighLive ? `${offHighLive}%` : w.offHigh}
                       </td>
-                      <td className="px-3 py-2.5 font-mono text-[#e040fb] font-semibold">{w.buyPrice}</td>
-                      <td className="px-3 py-2.5 font-mono text-[#94a3b8]">{w.maxPos}</td>
-                      <td className="px-3 py-2.5"><TrendBadges trendIds={w.trends} trends={trends} /></td>
+                      <td className="px-2 py-2.5 font-mono text-[#e040fb] font-semibold">{w.buyPrice}</td>
+                      <td className="px-2 py-2.5 font-mono text-[#94a3b8]">{w.maxPos}</td>
+                      <td className="px-2 py-2.5"><TrendInitialBadges trendIds={w.trends} trends={trends} /></td>
                     </tr>
                   );
                 })}

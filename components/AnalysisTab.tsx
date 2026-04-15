@@ -227,6 +227,7 @@ export default function AnalysisTab({
           </div>
           <div className="flex gap-2">
           <button
+            title="AI suggests 5 new mega-trends not in your current list, with tickers and mispricing analysis"
             className="px-4 py-2 rounded-md border border-[#1e293b] bg-white/[0.06] text-[#94a3b8] text-[13px] font-semibold font-mono hover:bg-white/[0.1] disabled:opacity-50"
             onClick={async () => {
               setLoading(true);
@@ -267,6 +268,7 @@ export default function AnalysisTab({
             Suggest
           </button>
           <button
+            title="Manually add a new mega-trend to your watchlist"
             className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono"
             onClick={() => {
               setShowAdd(!showAdd);
@@ -303,6 +305,7 @@ export default function AnalysisTab({
                   className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50"
                   onClick={doResearch}
                   disabled={!nf.name.trim()}
+                  title="AI researches this trend name and auto-fills all fields, then gives an investment recommendation"
                 >
                   Research with AI
                 </button>
@@ -491,7 +494,7 @@ export default function AnalysisTab({
                     {t.benchmarkTicker && <Badge color="#00e5ff">{t.benchmarkTicker}</Badge>}
                   </div>
                   <div className="flex gap-1.5 shrink-0">
-                    <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
+                    <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading} title="AI scans latest signals, bull/bear cases, and key tickers for this trend">Scan</button>
                     <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
                   </div>
                 </div>
@@ -507,7 +510,7 @@ export default function AnalysisTab({
                   </div>
                 </div>
                 <div className="flex gap-1.5 ml-3 shrink-0">
-                  <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
+                  <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading} title="AI scans latest signals, bull/bear cases, and key tickers for this trend">Scan</button>
                   <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
                 </div>
               </div>
