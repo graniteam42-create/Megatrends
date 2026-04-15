@@ -178,7 +178,7 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
       <h2 className="text-xl font-semibold mb-1.5">Strategy Lab</h2>
       <p className="text-[13px] text-[#94a3b8] mb-6">AI-powered tools to stress-test and evolve your investment framework</p>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <button
             key={i}

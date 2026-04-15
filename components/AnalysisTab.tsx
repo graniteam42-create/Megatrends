@@ -35,6 +35,8 @@ export default function AnalysisTab({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [resultModel, setResultModel] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const empty = { name: "", stage: 0, horizon: "2-5 years", confidence: 50, description: "", subTrends: "", thesis: "", bearCase: "", investmentMap: "", mispricingScore: 50 };
   const [nf, setNf] = useState(empty);
 
@@ -204,9 +206,23 @@ export default function AnalysisTab({
 
   return (
     <div className="animate-fadeIn">
-      <div className="flex justify-between items-center mb-5">
-        <h2 className="text-xl font-semibold">Deep Analysis</h2>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
+        <div>
+          <h2 className="text-xl font-semibold">Deep Analysis</h2>
+          <p className="text-[13px] text-[#94a3b8] mt-0.5">{trends.length} trends tracked</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter trends..."
+              className="w-full sm:w-52 px-3 py-2 pl-8 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-[13px] font-mono outline-none focus:border-[#00e5ff66] placeholder:text-[#475569]"
+            />
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#475569]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" strokeWidth="2"/><path d="m21 21-4.3-4.3" strokeWidth="2" strokeLinecap="round"/></svg>
+          </div>
+          <div className="flex gap-2">
           <button
             className="px-4 py-2 rounded-md border border-[#1e293b] bg-white/[0.06] text-[#94a3b8] text-[13px] font-semibold font-mono hover:bg-white/[0.1] disabled:opacity-50"
             onClick={async () => {
@@ -260,6 +276,7 @@ export default function AnalysisTab({
           >
             + Add
           </button>
+          </div>
         </div>
       </div>
 
@@ -312,7 +329,7 @@ export default function AnalysisTab({
 
           {researchPhase === "ready" && (
             <>
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Name</label>
                   <input className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-sm outline-none" value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} />
@@ -328,7 +345,7 @@ export default function AnalysisTab({
                 <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Description</label>
                 <textarea className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-[13px] outline-none resize-y min-h-[70px]" value={nf.description} onChange={(e) => setNf({ ...nf, description: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-3.5 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">
                 <div>
                   <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Stage: {STAGES[nf.stage]}</label>
                   <input type="range" min={0} max={4} value={nf.stage} onChange={(e) => setNf({ ...nf, stage: +e.target.value })} className="w-full" />
@@ -447,7 +464,11 @@ export default function AnalysisTab({
         </div>
       )}
 
-      {trends.map((t) => {
+      {trends.filter((t) => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.subTrends.some((s) => s.toLowerCase().includes(q));
+      }).map((t) => {
         const relConv = CONVERGENCES.filter((z) => z.trends.includes(t.id));
         return (
           <div key={t.id} id={`trend-${t.id}`} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] overflow-hidden mb-3.5">
@@ -463,7 +484,7 @@ export default function AnalysisTab({
                   </div>
                   <div className="flex gap-1.5">
                     <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
-                    <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setTrends((p) => p.filter((x) => x.id !== t.id))}>X</button>
+                    <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
                   </div>
                 </div>
               </div>
@@ -480,12 +501,12 @@ export default function AnalysisTab({
               </div>
               <div className="flex gap-1.5 ml-3">
                 <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
-                <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setTrends((p) => p.filter((x) => x.id !== t.id))}>X</button>
+                <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
               </div>
             </div>
             )}
             <p className="text-[13px] text-[#94a3b8] leading-relaxed mb-2">{t.description}</p>
-            <div className="grid grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <StagePipeline stage={t.stage} onChange={(v) => setTrends((p) => p.map((x) => (x.id === t.id ? { ...x, stage: v } : x)))} />
               <div className="flex gap-3">
                 <div className="flex-1"><Meter label="Mispricing" value={t.mispricingScore} /></div>
@@ -602,6 +623,42 @@ export default function AnalysisTab({
                   {renderFormattedScan(scans[scanModal.trendId].result)}
                 </>
               ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0c10]/80 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#ff174433] rounded-xl w-full max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-5">
+              <h3 className="text-[15px] font-bold text-[#ff1744] mb-2">Remove Trend</h3>
+              <p className="text-[13px] text-[#cbd5e1] mb-1">Are you sure you want to remove:</p>
+              <p className="text-[14px] font-semibold text-[#e0e4ec] mb-4">{deleteConfirm.name}</p>
+              <p className="text-[12px] text-[#94a3b8] mb-5">This will remove the trend and its scan data. This action cannot be undone.</p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  className="px-4 py-2 rounded-md border border-[#1e293b] bg-white/[0.06] text-[#94a3b8] text-[13px] font-semibold font-mono hover:bg-white/[0.1]"
+                  onClick={() => setDeleteConfirm(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-md bg-[#ff1744] text-white text-[13px] font-semibold font-mono hover:bg-[#ff1744dd]"
+                  onClick={() => {
+                    setTrends((p) => p.filter((x) => x.id !== deleteConfirm.id));
+                    setScans((p) => {
+                      const next = { ...p };
+                      delete next[deleteConfirm.id];
+                      return next;
+                    });
+                    setDeleteConfirm(null);
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           </div>
         </div>

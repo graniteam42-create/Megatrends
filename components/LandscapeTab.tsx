@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import type { Trend } from "@/lib/types";
-import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS, TREND_IMAGES } from "@/lib/seed-data";
+import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS, TREND_IMAGES, CONVERGENCES } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
+import ConvergenceNetwork from "./ConvergenceNetwork";
 
 function perfColor(v: number | null) {
   if (v === null) return "#475569";
@@ -149,11 +150,11 @@ export default function LandscapeTab({
 
       <h3 className="mt-8 text-base font-semibold text-[#ffea00]">Scenario Matrix</h3>
       <p className="text-[13px] text-[#94a3b8] mt-1 mb-3.5">Probability-weighted futures</p>
-      <div className="grid grid-cols-3 gap-3.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {SCENARIOS.map((sc, i) => {
           const c = sc.type === "base" ? "#ffea00" : sc.type === "bear" ? "#ff1744" : "#00e676";
           return (
-            <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-5" style={{ borderLeft: `3px solid ${c}` }}>
+            <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-4 sm:p-5" style={{ borderLeft: `3px solid ${c}` }}>
               <div className="flex justify-between mb-2">
                 <h4 className="text-sm font-semibold" style={{ color: c }}>{sc.name}</h4>
                 <Badge color={c}>{sc.prob}%</Badge>
@@ -164,6 +165,10 @@ export default function LandscapeTab({
           );
         })}
       </div>
+
+      <h3 className="mt-8 text-base font-semibold text-[#c084fc]">Convergence Network</h3>
+      <p className="text-[13px] text-[#94a3b8] mt-1 mb-2">Hover to explore connections between trends — {CONVERGENCES.length} convergence zones</p>
+      <ConvergenceNetwork trends={trends} convergences={CONVERGENCES} />
     </div>
   );
 }

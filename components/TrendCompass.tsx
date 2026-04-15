@@ -126,17 +126,17 @@ export default function TrendCompass() {
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-[#0d1117] via-[#0d1117cc] to-[#0d111700] pointer-events-none" />
-        <div className="relative px-7 pt-7 pb-6">
-          <div className="flex justify-between items-center">
+        <div className="relative px-4 sm:px-7 pt-5 sm:pt-7 pb-4 sm:pb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <h1 className="font-mono text-[32px] font-bold tracking-wider text-[#00e5ff] drop-shadow-[0_0_12px_rgba(0,229,255,0.3)]">TREND COMPASS</h1>
-              <p className="text-sm text-[#cbd5e1] tracking-[0.2em] uppercase mt-1">Macro Trend Tracker</p>
+              <h1 className="font-mono text-[22px] sm:text-[32px] font-bold tracking-wider text-[#00e5ff] drop-shadow-[0_0_12px_rgba(0,229,255,0.3)]">TREND COMPASS</h1>
+              <p className="text-xs sm:text-sm text-[#cbd5e1] tracking-[0.2em] uppercase mt-1">Macro Trend Tracker</p>
             </div>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-col items-start sm:items-end gap-1">
               <button
                 onClick={refreshPrices}
                 disabled={pricesRefreshing}
-                className="flex items-center gap-2 px-4 py-2 rounded-md border border-[#334155] bg-[#0d1117]/80 backdrop-blur-sm text-[12px] font-mono text-[#cbd5e1] hover:text-[#e0e4ec] hover:border-[#00e5ff66] hover:bg-[#0d1117] transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-md border border-[#334155] bg-[#0d1117]/80 backdrop-blur-sm text-[11px] sm:text-[12px] font-mono text-[#cbd5e1] hover:text-[#e0e4ec] hover:border-[#00e5ff66] hover:bg-[#0d1117] transition-colors disabled:opacity-50"
               >
                 <span className={pricesRefreshing ? "animate-spin" : ""}>&#x21bb;</span>
                 {pricesRefreshing ? "Refreshing..." : pricesDate ? `Prices: ${pricesDate}` : "Fetch Prices"}
@@ -150,12 +150,12 @@ export default function TrendCompass() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex border-b border-[#1e293b] bg-[#0d1117] flex-wrap">
+      <div className="flex border-b border-[#1e293b] bg-[#0d1117] overflow-x-auto">
         {TABS.map((t) => (
           <div
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-6 py-3 text-[13px] cursor-pointer font-mono transition-colors ${
+            className={`px-4 sm:px-6 py-3 text-[12px] sm:text-[13px] cursor-pointer font-mono transition-colors whitespace-nowrap flex-shrink-0 ${
               tab === t.id
                 ? "text-[#00e5ff] font-semibold border-b-2 border-[#00e5ff] bg-[rgba(0,229,255,0.04)]"
                 : "text-[#94a3b8] border-b-2 border-transparent hover:text-[#cbd5e1]"
@@ -167,7 +167,7 @@ export default function TrendCompass() {
       </div>
 
       {/* Content */}
-      <div className="px-7 py-6 max-w-[1400px] mx-auto">
+      <div className="px-3 sm:px-7 py-4 sm:py-6 max-w-[1400px] mx-auto">
         {tab === "landscape" && <LandscapeTab trends={trends} onSwitchTab={(t, trendId) => { setTab(t); if (trendId) setFocusTrendId(trendId); }} performance={performance} />}
         {tab === "analysis" && <AnalysisTab trends={trends} setTrends={setTrends} scans={scans} setScans={setScans} focusTrendId={focusTrendId} onFocusHandled={() => setFocusTrendId(null)} />}
         {tab === "positions" && <PositionsTab trends={trends} prices={prices} tickerPerf={Object.fromEntries(Object.values(performance).map((p) => [p.ticker, { perf20d: p.perf20d, perf60d: p.perf60d }]))} />}

@@ -87,6 +87,29 @@ export default function PositionsTab({
     return p.status;
   }
 
+  // Parse buyPrice range like "$440-550" or "$25-30" into [low, high]
+  function parseBuyRange(buyPrice: string): [number, number] | null {
+    const match = buyPrice.match(/\$?([\d,.]+)\s*[-–]\s*\$?([\d,.]+)/);
+    if (!match) return null;
+    const low = parseFloat(match[1].replace(/,/g, ""));
+    const high = parseFloat(match[2].replace(/,/g, ""));
+    if (isNaN(low) || isNaN(high)) return null;
+    return [low, high];
+  }
+
+  function getBuyZoneStatus(w: typeof CRASH_WATCHLIST[0]): "in_zone" | "near_zone" | "above" {
+    const livePrice = safePrice(w.ticker);
+    if (!livePrice) return "above";
+    const range = parseBuyRange(w.buyPrice);
+    if (!range) return "above";
+    const [low, high] = range;
+    const price = livePrice.close;
+    if (price >= low && price <= high) return "in_zone";
+    // "near zone" = within 10% above the top of buy range
+    if (price > high && price <= high * 1.1) return "near_zone";
+    return "above";
+  }
+
   return (
     <div className="animate-fadeIn">
       <div className="flex justify-between items-center mb-1.5">
@@ -114,68 +137,131 @@ export default function PositionsTab({
           Analyze Gaps
         </button>
       </div>
-      <p className="text-[13px] text-[#94a3b8] mb-5">
-        {POSITIONS.filter((p) => p.dir === "LONG").length} longs &middot; {POSITIONS.filter((p) => p.dir === "SHORT").length} shorts &middot; {POSITIONS.filter((p) => p.dir === "HEDGE").length} hedges &middot; {CRASH_WATCHLIST.length} on crash watchlist
-      </p>
-
-      {/* Positions Table */}
-      <div className="overflow-x-auto rounded-[10px] border border-[#1e293b] mb-5">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="bg-white/[0.03]">
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Ticker</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Name</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Dir</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Tier</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Type</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Price</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">20D %</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">60D %</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Conv</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Status</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">When</th>
-              <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Trends</th>
-            </tr>
-          </thead>
-          <tbody>
-            {POSITIONS.map((p, i) => {
-              const dc = p.dir === "LONG" ? "#00e676" : p.dir === "SHORT" ? "#ff1744" : "#c084fc";
-              const ds = dynamicStatus(p);
-              const livePrice = safePrice(p.ticker);
-              const perf = tickerPerf?.[p.ticker];
-              return (
-                <tr key={i} className="border-b border-[#1e293b] hover:bg-white/[0.03]" title={p.why}>
-                  <td className="px-3 py-2.5 font-mono font-bold" style={{ color: dc }}>{p.ticker}</td>
-                  <td className="px-3 py-2.5 text-[#cbd5e1] whitespace-nowrap">{p.name}</td>
-                  <td className="px-3 py-2.5"><Badge color={dc}>{p.dir}</Badge></td>
-                  <td className="px-3 py-2.5 font-mono" style={{ color: TIER_INFO[p.tier]?.color }}>{p.tier}</td>
-                  <td className="px-3 py-2.5 text-[#94a3b8]">{p.type}</td>
-                  <td className="px-3 py-2.5 font-mono text-[#00e5ff]">{livePrice ? `$${livePrice.close.toFixed(2)}` : "—"}</td>
-                  <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(perf?.perf20d) }}>{perf ? perfText(perf.perf20d) : "—"}</td>
-                  <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(perf?.perf60d) }}>{perf ? perfText(perf.perf60d) : "—"}</td>
-                  <td className="px-3 py-2.5 font-mono font-bold" style={{ color: dc }}>{p.conv}</td>
-                  <td className="px-3 py-2.5">
-                    <span className="px-2 py-[2px] rounded text-[11px] font-semibold" style={{ background: statusColor(ds) + "18", color: statusColor(ds) }}>{ds}</span>
-                  </td>
-                  <td className="px-3 py-2.5 text-[#94a3b8] text-[12px] whitespace-nowrap">{p.when}</td>
-                  <td className="px-3 py-2.5"><TrendBadges trendIds={p.trends} trends={trends} /></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Portfolio Summary Dashboard */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: "Longs", count: POSITIONS.filter((p) => p.dir === "LONG").length, color: "#00e676" },
+          { label: "Shorts", count: POSITIONS.filter((p) => p.dir === "SHORT").length, color: "#ff1744" },
+          { label: "Hedges", count: POSITIONS.filter((p) => p.dir === "HEDGE").length, color: "#c084fc" },
+          { label: "Watchlist", count: CRASH_WATCHLIST.length, color: "#e040fb" },
+        ].map((s) => (
+          <div key={s.label} className="bg-[#111827] border border-[#1e293b] rounded-lg px-4 py-3">
+            <div className="text-[22px] font-mono font-bold" style={{ color: s.color }}>{s.count}</div>
+            <div className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono">{s.label}</div>
+          </div>
+        ))}
       </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        {(() => {
+          const goCount = POSITIONS.filter((p) => dynamicStatus(p) === "GO").length;
+          const approachCount = POSITIONS.filter((p) => dynamicStatus(p) === "APPROACHING").length;
+          const waitCount = POSITIONS.filter((p) => dynamicStatus(p) === "WAIT").length;
+          const vix = getVix();
+          return [
+            { label: "GO Signals", value: String(goCount), color: "#00e676" },
+            { label: "Approaching", value: String(approachCount), color: "#ffea00" },
+            { label: "Waiting", value: String(waitCount), color: "#94a3b8" },
+            { label: "VIX", value: vix !== null ? vix.toFixed(1) : "—", color: vix !== null && vix > 30 ? "#ff1744" : "#00e5ff" },
+          ];
+        })().map((s) => (
+          <div key={s.label} className="bg-[#111827] border border-[#1e293b] rounded-lg px-4 py-3">
+            <div className="text-[22px] font-mono font-bold" style={{ color: s.color }}>{s.value}</div>
+            <div className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Positions grouped by Tier */}
+      {[1, 2, 3, 4].map((tier) => {
+        const tierPositions = POSITIONS.filter((p) => p.tier === tier);
+        if (!tierPositions.length) return null;
+        const info = TIER_INFO[tier];
+        const isOpen = expanded[`tier${tier}`] !== false; // default open
+        return (
+          <div key={tier} className="mb-4">
+            <div
+              onClick={() => setExpanded((p) => ({ ...p, [`tier${tier}`]: !isOpen }))}
+              className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 rounded-lg border border-[#1e293b] hover:border-[#334155] transition-colors"
+              style={{ background: `${info.color}06` }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm" style={{ color: info.color }}>{isOpen ? "\u25BE" : "\u25B8"}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-mono font-bold" style={{ color: info.color }}>T{tier}</span>
+                  <h3 className="text-sm font-semibold" style={{ color: info.color }}>{info.label}</h3>
+                </div>
+                <Badge color={info.color}>{tierPositions.length}</Badge>
+              </div>
+              <span className="text-[11px] text-[#64748b] hidden sm:inline">{info.sub}</span>
+            </div>
+            {isOpen && (
+              <div className="mt-2 overflow-x-auto rounded-[10px] border border-[#1e293b]">
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="bg-white/[0.03]">
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Ticker</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Name</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Dir</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Type</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Price</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">20D %</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">60D %</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Conv</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Status</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">When</th>
+                      <th className="px-3 py-2.5 text-left uppercase tracking-widest font-mono text-[11px] text-[#94a3b8] font-medium">Trends</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tierPositions.map((p, i) => {
+                      const dc = p.dir === "LONG" ? "#00e676" : p.dir === "SHORT" ? "#ff1744" : "#c084fc";
+                      const ds = dynamicStatus(p);
+                      const livePrice = safePrice(p.ticker);
+                      const perf = tickerPerf?.[p.ticker];
+                      return (
+                        <tr key={i} className="border-b border-[#1e293b] hover:bg-white/[0.03]" title={p.why}>
+                          <td className="px-3 py-2.5 font-mono font-bold" style={{ color: dc }}>{p.ticker}</td>
+                          <td className="px-3 py-2.5 text-[#cbd5e1] whitespace-nowrap">{p.name}</td>
+                          <td className="px-3 py-2.5"><Badge color={dc}>{p.dir}</Badge></td>
+                          <td className="px-3 py-2.5 text-[#94a3b8]">{p.type}</td>
+                          <td className="px-3 py-2.5 font-mono text-[#00e5ff]">{livePrice ? `$${livePrice.close.toFixed(2)}` : "—"}</td>
+                          <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(perf?.perf20d) }}>{perf ? perfText(perf.perf20d) : "—"}</td>
+                          <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(perf?.perf60d) }}>{perf ? perfText(perf.perf60d) : "—"}</td>
+                          <td className="px-3 py-2.5 font-mono font-bold" style={{ color: dc }}>{p.conv}</td>
+                          <td className="px-3 py-2.5">
+                            <span className="px-2 py-[2px] rounded text-[11px] font-semibold" style={{ background: statusColor(ds) + "18", color: statusColor(ds) }}>{ds}</span>
+                          </td>
+                          <td className="px-3 py-2.5 text-[#94a3b8] text-[12px] whitespace-nowrap">{p.when}</td>
+                          <td className="px-3 py-2.5"><TrendBadges trendIds={p.trends} trends={trends} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
 
       {/* Crash Watchlist Table */}
       <div className="mb-5">
-        <div onClick={() => toggle("crash")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-[rgba(224,64,251,0.04)] rounded-lg border border-[#4a1d8e]">
-          <div className="flex items-center gap-2.5">
-            <span className="text-sm text-[#e040fb]">{expanded.crash ? "\u25BE" : "\u25B8"}</span>
-            <h3 className="text-sm font-semibold text-[#e040fb]">Crash Watchlist</h3>
-            <Badge color="#e040fb">{CRASH_WATCHLIST.length}</Badge>
-          </div>
-          <span className="text-[11px] text-[#c084fc]">Quality companies to accumulate 40-60% off highs</span>
-        </div>
+        {(() => {
+          const inZone = CRASH_WATCHLIST.filter((w) => getBuyZoneStatus(w) === "in_zone").length;
+          const nearZone = CRASH_WATCHLIST.filter((w) => getBuyZoneStatus(w) === "near_zone").length;
+          return (
+            <div onClick={() => toggle("crash")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-[rgba(224,64,251,0.04)] rounded-lg border border-[#4a1d8e]">
+              <div className="flex items-center gap-2.5">
+                <span className="text-sm text-[#e040fb]">{expanded.crash ? "\u25BE" : "\u25B8"}</span>
+                <h3 className="text-sm font-semibold text-[#e040fb]">Crash Watchlist</h3>
+                <Badge color="#e040fb">{CRASH_WATCHLIST.length}</Badge>
+                {inZone > 0 && <Badge color="#00e676">{inZone} in buy zone</Badge>}
+                {nearZone > 0 && <Badge color="#ffea00">{nearZone} near zone</Badge>}
+              </div>
+              <span className="text-[11px] text-[#c084fc] hidden sm:inline">Quality companies to accumulate 40-60% off highs</span>
+            </div>
+          );
+        })()}
         {expanded.crash && (
           <div className="mt-2 overflow-x-auto rounded-[10px] border border-[#1e293b]">
             <table className="w-full text-[13px]">
@@ -199,12 +285,26 @@ export default function PositionsTab({
                   const highNum = parseFloat(w.high.replace(/[^0-9.]/g, ""));
                   const offHighLive = livePrice && highNum ? ((livePrice.close / highNum - 1) * 100).toFixed(1) : null;
                   const offVal = offHighLive ? parseFloat(offHighLive) : parseInt(w.offHigh);
+                  const zoneStatus = getBuyZoneStatus(w);
                   return (
-                    <tr key={i} className="border-b border-[#1e293b] hover:bg-white/[0.03]" title={w.quality}>
-                      <td className="px-3 py-2.5 font-mono font-bold" style={{ color: isSpec ? "#ff9100" : "#e040fb" }}>{w.ticker}</td>
+                    <tr
+                      key={i}
+                      className="border-b border-[#1e293b] hover:bg-white/[0.03]"
+                      title={w.quality}
+                      style={zoneStatus === "in_zone" ? { background: "rgba(0,230,118,0.06)" } : zoneStatus === "near_zone" ? { background: "rgba(255,234,0,0.04)" } : undefined}
+                    >
+                      <td className="px-3 py-2.5 font-mono font-bold" style={{ color: isSpec ? "#ff9100" : "#e040fb" }}>
+                        <div className="flex items-center gap-1.5">
+                          {w.ticker}
+                          {zoneStatus === "in_zone" && <span className="px-1.5 py-[1px] rounded text-[9px] font-bold bg-[#00e67622] text-[#00e676] uppercase tracking-wider">BUY</span>}
+                          {zoneStatus === "near_zone" && <span className="px-1.5 py-[1px] rounded text-[9px] font-bold bg-[#ffea0022] text-[#ffea00] uppercase tracking-wider">NEAR</span>}
+                        </div>
+                      </td>
                       <td className="px-3 py-2.5 text-[#cbd5e1] whitespace-nowrap">{w.name}</td>
                       <td className="px-3 py-2.5"><Badge color={isSpec ? "#ff9100" : "#e040fb"}>{w.sector}</Badge></td>
-                      <td className="px-3 py-2.5 font-mono text-[#00e5ff]">{livePrice ? `$${livePrice.close.toFixed(2)}` : w.now}</td>
+                      <td className="px-3 py-2.5 font-mono" style={{ color: zoneStatus === "in_zone" ? "#00e676" : "#00e5ff" }}>
+                        {livePrice ? `$${livePrice.close.toFixed(2)}` : w.now}
+                      </td>
                       <td className="px-3 py-2.5 font-mono text-[#94a3b8]">{w.high}</td>
                       <td className="px-3 py-2.5 font-mono font-semibold" style={{ color: offVal < -30 ? "#00e676" : "#ffea00" }}>
                         {offHighLive ? `${offHighLive}%` : w.offHigh}
@@ -253,7 +353,7 @@ export default function PositionsTab({
           <span className="text-[11px] text-[#00e676]">Long Hard Assets vs. Short Bonds</span>
         </div>
         {expanded.core && (
-          <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             {TRADE_LEGS.map((l, i) => {
               const lc = l.side === "LONG" ? "#00e676" : "#ff1744";
               return (
@@ -278,7 +378,7 @@ export default function PositionsTab({
           </div>
         </div>
         {expanded.frameworks && (
-          <div className="grid grid-cols-2 gap-2 mt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             {KEY_CONCEPTS.map((k, i) => (
               <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] px-3 py-2.5">
                 <h4 className="text-xs font-semibold mb-1">{k.name}</h4>
