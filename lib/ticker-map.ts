@@ -72,4 +72,17 @@ export const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = 
   // Market Indicators
   "VIX": { symbol: "VIX", exchange: "INDX" },
   "SPY": { symbol: "SPY", exchange: "US" },
+  // Regime indicators
+  "TLT": { symbol: "TLT", exchange: "US" },     // 20Y+ Treasury — rate/duration risk
+  "SHY": { symbol: "SHY", exchange: "US" },     // 1-3Y Treasury — short duration safe haven
+  "HYG": { symbol: "HYG", exchange: "US" },     // High yield corporate — credit stress
+  "LQD": { symbol: "LQD", exchange: "US" },     // Investment grade corporate — credit benchmark
+  "DXY": { symbol: "DX-Y.NYB", exchange: "INDX" }, // Dollar index
+  "GLD": { symbol: "GLD", exchange: "US" },     // Gold ETF (for gold/real-yield signal)
+  "TIPS": { symbol: "TIP", exchange: "US" },    // TIPS — real yields proxy
+  "BTC": { symbol: "BTC-USD", exchange: "CC" }, // Bitcoin — risk correlation check
+  "COPX": { symbol: "COPX", exchange: "US" },   // Copper miners — growth proxy
+  "RSP": { symbol: "RSP", exchange: "US" },     // Equal-weight S&P — breadth signal
+  "XLE": { symbol: "XLE", exchange: "US" },     // Energy sector
+  "UUP": { symbol: "UUP", exchange: "US" },     // Dollar bull ETF (alternative DXY proxy)
 };

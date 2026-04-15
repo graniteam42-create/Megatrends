@@ -97,12 +97,19 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           system: "Suggest 5 NEW mega-trends not in the user's current list. IMPORTANT: For keyTickers, strongly prefer US-listed stocks and ETFs available on EODHD. Return ONLY a valid JSON array (no markdown fences) of objects with these exact fields: name (string), thesis (string, 2-3 sentences), keyTickers (string, comma-separated ticker symbols with brief descriptions), benchmarkTicker (single US-listed ticker that best tracks this trend — must be a real tradeable symbol like XYL, ROBO, URA etc.), whyMispriced (string, 2-3 sentences).",
-          prompt: "Current trends: " + trends.map((t) => t.name).join(", "),
+          prompt: trends.length
+            ? "Current trends: " + trends.map((t) => t.name).join(", ")
+            : "The user has no trends yet. Suggest 5 foundational mega-trends for a macro investment framework.",
           tier: "scan",
         }),
       });
       const data = await res.json();
-      if (data.error) return;
+      if (data.error) {
+        setResult("Error: " + data.error);
+        setModalTitle("Discover Trends");
+        setLoading(false);
+        return;
+      }
 
       const text = data.result;
       const jsonMatch = text.match(/\[[\s\S]*\]/);
@@ -112,6 +119,8 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
       }
     } catch (e) {
       console.error("Discover trends error:", e);
+      setResult("Error: " + (e instanceof Error ? e.message : "Failed to discover trends. Check API keys."));
+      setModalTitle("Discover Trends");
     } finally {
       setDiscoverLoading(false);
     }
@@ -153,13 +162,15 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
       desc: "Synthesize all trends into concrete positions, tickers, timing, and sizing",
       gradient: "from-[#00e5ff] to-[#0ea5e9]",
       glow: "rgba(0,229,255,0.12)",
-      onClick: () =>
+      onClick: () => {
+        if (!trends.length) { setResult("Add some trends first before running a synthesis."); setModalTitle("Full Synthesis"); return; }
         runAI(
           "Full Synthesis",
           "Synthesize mega-trends into positions. Use markdown ## headers for each section. Use bullet points. Be concise and specific with tickers. Prefer tickers available on EODHD (US-listed stocks/ETFs, major XETRA/LSE ETFs). Avoid obscure instruments without price data.",
           `Trends:\n${trends.map((t) => `${t.name} [${STAGES[t.stage]}] ${t.confidence}%\nThesis: ${t.thesis}\nInvestments: ${t.investmentMap || "N/A"}`).join("\n\n")}\n\nReturn these sections:\n## Top 5 Asymmetric Plays\n## Asset Class Positioning\n## Physical vs Equity Split\n## Hedges by Scenario\n## Timing & Entry Points\n## Key Risks`,
           "synthesis"
-        ),
+        );
+      },
     },
     {
       title: "Discover Trends",
@@ -173,13 +184,15 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
       desc: "Play contrarian analyst - find flaws, contradictions, and blind spots in your thesis",
       gradient: "from-[#ff6b6b] to-[#ff1744]",
       glow: "rgba(255,23,68,0.12)",
-      onClick: () =>
+      onClick: () => {
+        if (!trends.length) { setResult("Add some trends first before running a challenge."); setModalTitle("Challenge Framework"); return; }
         runAI(
           "Challenge Framework",
           "Contrarian analyst. Challenge aggressively. Use markdown ## headers for each section. Bullet points. Be specific with tickers and numbers.",
           `${trends.map((t) => `${t.name} [${STAGES[t.stage]}] ${t.confidence}%\nThesis: ${t.thesis}\nBear: ${t.bearCase || "N/A"}`).join("\n\n")}\n\nReturn these sections:\n## Trends Most Likely Wrong\n## Blind Spots & Missing Trends\n## Internal Contradictions\n## Biggest Single Risk\n## Bet Against (specific tickers to short)`,
           "synthesis"
-        ),
+        );
+      },
     },
   ];
 

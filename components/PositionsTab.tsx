@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Trend, PriceData } from "@/lib/types";
 import { POSITIONS, CRASH_WATCHLIST, CATALYSTS, TRADE_LEGS, KEY_CONCEPTS, TIER_INFO } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
+import { PieChart, AllocationHistory } from "./AllocationCharts";
 
 const TREND_COLORS: Record<string, string> = {
   t1: "#00e5ff", t2: "#ffea00", t3: "#00e676", t4: "#ff9100", t5: "#c084fc",
@@ -81,6 +82,55 @@ export default function PositionsTab({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [sortCol, setSortCol] = useState<SortCol>("tier");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  // AI Allocation state
+  const [allocation, setAllocation] = useState<{ allocations: { name: string; pct: number }[]; reasoning?: string; date?: string; model?: string } | null>(null);
+  const [allocHistory, setAllocHistory] = useState<{ date: string; allocations: { name: string; pct: number }[]; reasoning?: string; model?: string }[]>([]);
+  const [allocLoading, setAllocLoading] = useState(false);
+  const [allocError, setAllocError] = useState("");
+
+  // Load cached allocation on mount
+  useEffect(() => {
+    fetch("/api/allocation")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.current) setAllocation(data.current);
+        if (data.history) setAllocHistory(data.history);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Generate / refresh allocation
+  async function generateAllocation(force?: boolean) {
+    setAllocLoading(true);
+    setAllocError("");
+    try {
+      const res = await fetch("/api/allocation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trends, positions: POSITIONS, prices, force }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setAllocError(data.error);
+      } else {
+        setAllocation(data.current);
+        if (data.history) setAllocHistory(data.history);
+      }
+    } catch (e: unknown) {
+      setAllocError(e instanceof Error ? e.message : "Failed to generate allocation");
+    } finally {
+      setAllocLoading(false);
+    }
+  }
+
+  // Auto-generate on first load if no allocation exists
+  useEffect(() => {
+    if (!allocation && !allocLoading && trends.length > 0) {
+      const timer = setTimeout(() => generateAllocation(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [allocation, trends.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }));
 
@@ -206,6 +256,99 @@ export default function PositionsTab({
             AI finds gaps, concentration risks, and missing trend coverage in your portfolio
           </span>
         </button>
+      </div>
+
+      {/* AI Portfolio Allocation */}
+      <div className="mb-6 bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-5">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h3 className="text-[15px] font-bold text-[#00e5ff]">AI Portfolio Allocation</h3>
+            <p className="text-[11px] text-[#475569] font-mono mt-0.5">
+              {allocation?.date ? `Generated ${allocation.date}` : "Not yet generated"}
+              {allocation?.model ? ` via ${allocation.model}` : ""}
+            </p>
+          </div>
+          <button
+            onClick={() => generateAllocation(true)}
+            disabled={allocLoading}
+            title="Regenerate allocation using AI. Uses Claude Sonnet (~$0.05 per call). Cached daily."
+            className="group relative px-3 py-1.5 rounded-md border border-[#1e293b] bg-white/[0.06] text-[#94a3b8] text-[12px] font-semibold font-mono hover:bg-white/[0.1] disabled:opacity-50"
+          >
+            {allocLoading ? "Generating..." : "Regenerate"}
+            <span className="absolute bottom-full right-0 mb-2 px-2 py-1 rounded bg-[#111827] border border-[#334155] text-[10px] text-[#cbd5e1] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+              AI suggests portfolio allocation based on trends, positions, and prices
+            </span>
+          </button>
+        </div>
+
+        {allocError && (
+          <div className="px-3 py-2 rounded-md bg-[rgba(255,23,68,0.08)] border border-[#ff174433] text-[12px] text-[#ff1744] mb-3">
+            {allocError}
+          </div>
+        )}
+
+        {allocLoading && !allocation && (
+          <div className="py-10 text-center">
+            <div className="inline-block w-5 h-5 border-2 border-[#1e293b] border-t-[#00e5ff] rounded-full animate-spin" />
+            <p className="mt-3 text-[13px] text-[#0ea5e9]">Generating allocation...</p>
+          </div>
+        )}
+
+        {allocation && allocation.allocations.length > 0 && (
+          <>
+            {/* Pie chart + reasoning side by side */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1 min-w-0">
+                <PieChart allocations={allocation.allocations} />
+              </div>
+              {allocation.reasoning && (
+                <div className="lg:w-[320px] shrink-0 px-4 py-3.5 bg-[rgba(0,229,255,0.04)] rounded-lg border border-[#1e293b] self-start">
+                  <span className="text-[11px] text-[#00e5ff] uppercase tracking-widest font-mono font-semibold block mb-2">AI Commentary</span>
+                  <p className="text-[12px] text-[#cbd5e1] leading-[1.7]">{allocation.reasoning}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Regime signals */}
+            {(allocation as Record<string, unknown>).regime && (() => {
+              const r = (allocation as Record<string, unknown>).regime as { regime: string; overallScore: number; signals: { name: string; value: number | null; interpretation: string; score: number }[]; equityCorrelationCap: number; deployableTiers: number[] };
+              const regimeColor = r.regime === "CALM" ? "#00e676" : r.regime === "CAUTIOUS" ? "#ffea00" : r.regime === "STRESSED" ? "#ff9100" : "#ff1744";
+              return (
+                <div className="mt-4">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono">Market Regime</span>
+                    <span className="px-2 py-[2px] rounded text-[11px] font-bold font-mono" style={{ background: regimeColor + "18", color: regimeColor }}>
+                      {r.regime}
+                    </span>
+                    <span className="text-[11px] text-[#94a3b8] font-mono">score {r.overallScore.toFixed(2)} | deploy T{r.deployableTiers.join(",T")} | eq. cap {r.equityCorrelationCap}%</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
+                    {r.signals.map((s, i) => {
+                      const sc = s.score;
+                      const color = sc >= 1 ? "#00e676" : sc >= 0.3 ? "#a3e635" : sc >= -0.3 ? "#cbd5e1" : sc >= -1 ? "#ffea00" : "#ff1744";
+                      return (
+                        <div key={i} className="px-2 py-1.5 rounded bg-white/[0.03] border border-[#1e293b] cursor-default" title={s.interpretation}>
+                          <div className="text-[10px] text-[#94a3b8] font-mono truncate">{s.name}</div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[13px] font-mono font-bold" style={{ color }}>{s.value !== null ? (typeof s.value === "number" ? s.value.toFixed(1) : s.value) : "—"}</span>
+                            <span className="text-[9px] font-mono" style={{ color }}>{sc > 0 ? "+" : ""}{sc}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </>
+        )}
+
+        {allocHistory.length > 1 && (
+          <div className="mt-5">
+            <h4 className="text-[13px] font-semibold text-[#94a3b8] mb-2">Allocation History</h4>
+            <AllocationHistory history={allocHistory} />
+          </div>
+        )}
       </div>
 
       {/* Single sortable positions table */}
