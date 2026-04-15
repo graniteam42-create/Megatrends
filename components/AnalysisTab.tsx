@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from "react";
 import type { Trend } from "@/lib/types";
-import { STAGES, STAGE_COLORS, HORIZONS, CONVERGENCES, TREND_IMAGES } from "@/lib/seed-data";
+import { STAGES, STAGE_COLORS, HORIZONS, CONVERGENCES, getTrendImage } from "@/lib/seed-data";
+import { extractBenchmarkTicker } from "@/lib/ticker-map";
+import { fetchTrendImage } from "@/lib/fetch-trend-image";
 import { StagePipeline, Meter, Badge } from "./StagePipeline";
 
 interface ScanData {
@@ -35,7 +37,9 @@ export default function AnalysisTab({
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [resultModel, setResultModel] = useState("");
-  const empty = { name: "", stage: 0, horizon: "2-5 years", confidence: 50, description: "", subTrends: "", thesis: "", bearCase: "", investmentMap: "", mispricingScore: 50 };
+  const [searchQuery, setSearchQuery] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const empty = { name: "", stage: 0, horizon: "2-5 years", confidence: 50, description: "", subTrends: "", thesis: "", bearCase: "", investmentMap: "", mispricingScore: 50, benchmarkTicker: "" };
   const [nf, setNf] = useState(empty);
 
   // Scroll to focused trend when navigating from Landscape
@@ -71,23 +75,28 @@ export default function AnalysisTab({
     return res.json();
   }
 
-  function addTrend() {
-    setTrends((p) => [
-      ...p,
-      {
-        ...nf,
-        id: "t" + Date.now(),
-        subTrends: nf.subTrends.split(",").map((x: string) => x.trim()).filter(Boolean),
-        signals: [],
-        confidence: +nf.confidence,
-        stage: +nf.stage,
-        mispricingScore: +nf.mispricingScore,
-      } as unknown as Trend,
-    ]);
+  async function addTrend() {
+    const investMap = typeof nf.investmentMap === "string" ? nf.investmentMap : "";
+    const trendId = "t" + Date.now();
+    const newTrend = {
+      ...nf,
+      id: trendId,
+      subTrends: nf.subTrends.split(",").map((x: string) => x.trim()).filter(Boolean),
+      signals: [],
+      confidence: +nf.confidence,
+      stage: +nf.stage,
+      mispricingScore: +nf.mispricingScore,
+      benchmarkTicker: nf.benchmarkTicker || extractBenchmarkTicker(investMap),
+    } as unknown as Trend;
+    setTrends((p) => [...p, newTrend]);
     setNf(empty);
     setShowAdd(false);
     setResearchPhase("idle");
     setAssessment("");
+    // Fetch unique image in background
+    fetchTrendImage(nf.name).then((img) => {
+      if (img) setTrends((p) => p.map((t) => t.id === trendId ? { ...t, image: img } : t));
+    });
   }
 
   async function doResearch() {
@@ -95,7 +104,7 @@ export default function AnalysisTab({
     setResearchPhase("researching");
     try {
       const data = await callAPI(
-        "You are a strategic intelligence analyst. Given a trend name, research it thoroughly and return a JSON object with these exact fields: description (2-3 sentences), thesis (investment thesis, 1-2 sentences), bearCase (strongest counter-argument, 1-2 sentences), investmentMap (specific tickers like NVDA, ASML with Long/Short), confidence (0-100 number), mispricingScore (0-100 number), subTrends (array of 3-5 strings), stage (0-4 where 0=Nascent, 1=Emerging, 2=Accelerating, 3=Consensus, 4=Overcrowded), horizon (one of: 6-18 months, 2-5 years, 5-15 years). Return ONLY valid JSON, no markdown fences.",
+        "You are a strategic intelligence analyst. Given a trend name, research it thoroughly and return a JSON object with these exact fields: description (2-3 sentences), thesis (investment thesis, 1-2 sentences), bearCase (strongest counter-argument, 1-2 sentences), investmentMap (specific tickers like NVDA, ASML with Long/Short), benchmarkTicker (single US-listed ticker symbol that best tracks this trend, e.g. NVDA for AI or XYL for water — must be a real tradeable symbol), confidence (0-100 number), mispricingScore (0-100 number), subTrends (array of 3-5 strings), stage (0-4 where 0=Nascent, 1=Emerging, 2=Accelerating, 3=Consensus, 4=Overcrowded), horizon (one of: 6-18 months, 2-5 years, 5-15 years). Return ONLY valid JSON, no markdown fences.",
         nf.name,
         "scan"
       );
@@ -116,6 +125,7 @@ export default function AnalysisTab({
         subTrends: Array.isArray(parsed.subTrends) ? parsed.subTrends.join(", ") : (parsed.subTrends || ""),
         stage: parsed.stage ?? 0,
         horizon: parsed.horizon || "2-5 years",
+        benchmarkTicker: parsed.benchmarkTicker || "",
       });
 
       // Now get assessment
@@ -204,10 +214,25 @@ export default function AnalysisTab({
 
   return (
     <div className="animate-fadeIn">
-      <div className="flex justify-between items-center mb-5">
-        <h2 className="text-xl font-semibold">Deep Analysis</h2>
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
+        <div>
+          <h2 className="text-xl font-semibold">Deep Analysis</h2>
+          <p className="text-[13px] text-[#94a3b8] mt-0.5">{trends.length} trends tracked</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Filter trends..."
+              className="w-full sm:w-52 px-3 py-2 pl-8 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-[13px] font-mono outline-none focus:border-[#00e5ff66] placeholder:text-[#475569]"
+            />
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#475569]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" strokeWidth="2"/><path d="m21 21-4.3-4.3" strokeWidth="2" strokeLinecap="round"/></svg>
+          </div>
+          <div className="flex gap-2">
           <button
+            title="AI suggests 5 new mega-trends not in your current list, with tickers and mispricing analysis"
             className="px-4 py-2 rounded-md border border-[#1e293b] bg-white/[0.06] text-[#94a3b8] text-[13px] font-semibold font-mono hover:bg-white/[0.1] disabled:opacity-50"
             onClick={async () => {
               setLoading(true);
@@ -215,7 +240,7 @@ export default function AnalysisTab({
               setSuggestions([]);
               try {
                 const data = await callAPI(
-                  "Suggest 5 NEW mega-trends NOT in the user's current list. IMPORTANT: For investmentMap tickers, strongly prefer tickers available on EODHD (US-listed stocks and ETFs, or major EU-listed ETFs on XETRA/LSE). Avoid obscure EU instruments, certificates, or tickers unlikely to have price data. Return a JSON array of 5 objects, each with: name, description, thesis, bearCase, investmentMap, confidence (0-100), mispricingScore (0-100), subTrends (string array), stage (0-4), horizon (string). Return ONLY valid JSON, no markdown fences.",
+                  "Suggest 5 NEW mega-trends NOT in the user's current list. IMPORTANT: For investmentMap tickers, strongly prefer tickers available on EODHD (US-listed stocks and ETFs, or major EU-listed ETFs on XETRA/LSE). Avoid obscure EU instruments. Return a JSON array of 5 objects, each with: name, description, thesis, bearCase, investmentMap, benchmarkTicker (single US-listed ticker symbol that best tracks this trend — must be a real tradeable symbol), confidence (0-100), mispricingScore (0-100), subTrends (string array), stage (0-4), horizon (string). Return ONLY valid JSON, no markdown fences.",
                   "Current trends: " + trends.map((t) => t.name).join(", "),
                   "scan"
                 );
@@ -248,6 +273,7 @@ export default function AnalysisTab({
             Suggest
           </button>
           <button
+            title="Manually add a new mega-trend to your watchlist"
             className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono"
             onClick={() => {
               setShowAdd(!showAdd);
@@ -260,6 +286,7 @@ export default function AnalysisTab({
           >
             + Add
           </button>
+          </div>
         </div>
       </div>
 
@@ -283,6 +310,7 @@ export default function AnalysisTab({
                   className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50"
                   onClick={doResearch}
                   disabled={!nf.name.trim()}
+                  title="AI researches this trend name and auto-fills all fields, then gives an investment recommendation"
                 >
                   Research with AI
                 </button>
@@ -312,7 +340,7 @@ export default function AnalysisTab({
 
           {researchPhase === "ready" && (
             <>
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Name</label>
                   <input className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-sm outline-none" value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} />
@@ -328,7 +356,7 @@ export default function AnalysisTab({
                 <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Description</label>
                 <textarea className="w-full px-3.5 py-2.5 rounded-md border border-[#1e293b] bg-[#0d1117] text-[#e0e4ec] text-[13px] outline-none resize-y min-h-[70px]" value={nf.description} onChange={(e) => setNf({ ...nf, description: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-3.5 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3">
                 <div>
                   <label className="text-[11px] text-[#94a3b8] uppercase tracking-widest font-mono block mb-1">Stage: {STAGES[nf.stage]}</label>
                   <input type="range" min={0} max={4} value={nf.stage} onChange={(e) => setNf({ ...nf, stage: +e.target.value })} className="w-full" />
@@ -421,21 +449,28 @@ export default function AnalysisTab({
                 <button
                   className="px-3 py-1.5 rounded-md bg-[#00e676] text-[#0a0c10] text-[12px] font-semibold font-mono flex-shrink-0"
                   onClick={() => {
+                    const investMap = s.investmentMap || "";
+                    const trendId = "t" + Date.now();
+                    const trendName = s.name || "Untitled";
                     const newTrend: Trend = {
-                      id: "t" + Date.now(),
-                      name: s.name || "Untitled",
+                      id: trendId,
+                      name: trendName,
                       description: s.description || "",
                       thesis: s.thesis || "",
                       bearCase: s.bearCase || "",
-                      investmentMap: s.investmentMap || "",
+                      investmentMap: investMap,
                       confidence: s.confidence ?? 50,
                       mispricingScore: s.mispricingScore ?? 50,
                       subTrends: Array.isArray(s.subTrends) ? s.subTrends : [],
                       stage: s.stage ?? 0,
                       horizon: s.horizon || "2-5 years",
                       signals: [],
+                      benchmarkTicker: (s as Record<string, unknown>).benchmarkTicker as string || extractBenchmarkTicker(investMap),
                     };
                     setTrends((p) => [...p, newTrend]);
+                    fetchTrendImage(trendName).then((img) => {
+                      if (img) setTrends((p) => p.map((t) => t.id === trendId ? { ...t, image: img } : t));
+                    });
                     setSuggestions((prev) => prev.filter((_, idx) => idx !== i));
                   }}
                 >
@@ -447,45 +482,53 @@ export default function AnalysisTab({
         </div>
       )}
 
-      {trends.map((t) => {
+      {trends.filter((t) => {
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        return t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.subTrends.some((s) => s.toLowerCase().includes(q));
+      }).map((t) => {
         const relConv = CONVERGENCES.filter((z) => z.trends.includes(t.id));
         return (
           <div key={t.id} id={`trend-${t.id}`} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] overflow-hidden mb-3.5">
-            {TREND_IMAGES[t.id] && (
+            {(() => {
+              const img = getTrendImage(t.id, t.name, t.description, t.image);
+              return img ? (
               <div className="relative h-44 w-full">
-                <img src={TREND_IMAGES[t.id].url} alt="" className="w-full h-full object-cover" />
+                <img src={img.url} alt="" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-b from-[#11182700] via-[#11182766] to-[#111827]" />
                 <div className="absolute bottom-3 left-5 right-5 flex items-end justify-between">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     <h3 className="text-[19px] font-bold drop-shadow-lg">{t.name}</h3>
                     <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
                     <Badge color="#94a3b8">{t.horizon}</Badge>
+                    {t.benchmarkTicker && <Badge color="#00e5ff">{t.benchmarkTicker}</Badge>}
                   </div>
-                  <div className="flex gap-1.5">
-                    <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
-                    <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setTrends((p) => p.filter((x) => x.id !== t.id))}>X</button>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading} title="AI scans latest signals, bull/bear cases, and key tickers for this trend">Scan</button>
+                    <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
                   </div>
                 </div>
               </div>
-            )}
+              ) : (
+              <div className="p-5 pb-0 flex justify-between items-start mb-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                    <h3 className="text-[17px] font-semibold">{t.name}</h3>
+                    <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
+                    <Badge color="#94a3b8">{t.horizon}</Badge>
+                    {t.benchmarkTicker && <Badge color="#00e5ff">{t.benchmarkTicker}</Badge>}
+                  </div>
+                </div>
+                <div className="flex gap-1.5 ml-3 shrink-0">
+                  <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading} title="AI scans latest signals, bull/bear cases, and key tickers for this trend">Scan</button>
+                  <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
+                </div>
+              </div>
+              );
+            })()}
             <div className="p-5">
-            {!TREND_IMAGES[t.id] && (
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1">
-                <div className="flex items-center gap-2.5 mb-1.5">
-                  <h3 className="text-[17px] font-semibold">{t.name}</h3>
-                  <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
-                  <Badge color="#94a3b8">{t.horizon}</Badge>
-                </div>
-              </div>
-              <div className="flex gap-1.5 ml-3">
-                <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
-                <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setTrends((p) => p.filter((x) => x.id !== t.id))}>X</button>
-              </div>
-            </div>
-            )}
             <p className="text-[13px] text-[#94a3b8] leading-relaxed mb-2">{t.description}</p>
-            <div className="grid grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <StagePipeline stage={t.stage} onChange={(v) => setTrends((p) => p.map((x) => (x.id === t.id ? { ...x, stage: v } : x)))} />
               <div className="flex gap-3">
                 <div className="flex-1"><Meter label="Mispricing" value={t.mispricingScore} /></div>
@@ -602,6 +645,42 @@ export default function AnalysisTab({
                   {renderFormattedScan(scans[scanModal.trendId].result)}
                 </>
               ) : null}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0a0c10]/80 backdrop-blur-sm" onClick={() => setDeleteConfirm(null)}>
+          <div className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#ff174433] rounded-xl w-full max-w-sm mx-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-5">
+              <h3 className="text-[15px] font-bold text-[#ff1744] mb-2">Remove Trend</h3>
+              <p className="text-[13px] text-[#cbd5e1] mb-1">Are you sure you want to remove:</p>
+              <p className="text-[14px] font-semibold text-[#e0e4ec] mb-4">{deleteConfirm.name}</p>
+              <p className="text-[12px] text-[#94a3b8] mb-5">This will remove the trend and its scan data. This action cannot be undone.</p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  className="px-4 py-2 rounded-md border border-[#1e293b] bg-white/[0.06] text-[#94a3b8] text-[13px] font-semibold font-mono hover:bg-white/[0.1]"
+                  onClick={() => setDeleteConfirm(null)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="px-4 py-2 rounded-md bg-[#ff1744] text-white text-[13px] font-semibold font-mono hover:bg-[#ff1744dd]"
+                  onClick={() => {
+                    setTrends((p) => p.filter((x) => x.id !== deleteConfirm.id));
+                    setScans((p) => {
+                      const next = { ...p };
+                      delete next[deleteConfirm.id];
+                      return next;
+                    });
+                    setDeleteConfirm(null);
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,3 +1,41 @@
+// List of known tickers for client-side benchmark extraction
+export const KNOWN_TICKERS = [
+  // Positions & watchlist
+  "NVDA", "AVGO", "TSM", "ASML", "GEV", "ETN", "PWR", "BWXT", "FCX", "OKLO", "NBIS",
+  "SPUT", "OD7C", "WGLD", "WSLV", "WNUC", "IXJ", "RARE", "GDX", "W1TB",
+  "CCJ", "NXE", "IBIT", "CRSP", "EWW", "OXY", "SPY", "VIX",
+  // Common US ETFs & stocks AI might suggest
+  "ROBO", "BOTZ", "ARKQ", "ISRG", "ROK", "ABB", "HON",
+  "XYL", "AWK", "PHO", "WTS", "WTRG", "ECL",
+  "LLY", "UNH", "ISRG", "ABBV", "PFE", "MRK", "JNJ",
+  "PANW", "CRWD", "FTNT", "ZS",
+  "LMT", "NOC", "RTX", "GD", "BA",
+  "GOOG", "AMZN", "MSFT", "AAPL", "META",
+  "INDA", "VNM", "EWW", "EWZ", "KWEB",
+  "SLV", "GLD", "USO", "URA", "COPX", "REMX", "LIT",
+  "XLF", "XLK", "XLE", "XLV", "XLI",
+  "ARKK", "ARKG", "ARKW",
+  "SMH", "SOXX", "QQQ",
+];
+
+/**
+ * Extract the best benchmark ticker from an investmentMap string.
+ * Priority: known EODHD ticker > any uppercase 2-5 char symbol.
+ */
+export function extractBenchmarkTicker(investmentMap: string): string | undefined {
+  if (!investmentMap) return undefined;
+  const words = investmentMap.match(/\b[A-Z][A-Z0-9]{1,4}\b/g);
+  if (!words) return undefined;
+  // Noise words to skip
+  const SKIP = new Set(["ETF", "USD", "EUR", "ETC", "THE", "AND", "FOR", "NOT", "ALL", "BUY", "TOP", "IPO", "ESG", "GDP", "IMF", "FED", "SEC", "DAC", "IOT", "API"]);
+  const filtered = words.filter((w) => !SKIP.has(w));
+  // Prefer known tickers (available on EODHD)
+  const known = filtered.find((w) => KNOWN_TICKERS.includes(w));
+  if (known) return known;
+  // Fall back to first plausible ticker (2+ chars, not a noise word)
+  return filtered.find((w) => w.length >= 2) || undefined;
+}
+
 export const TICKER_MAP: Record<string, { symbol: string; exchange: string }> = {
   // Physical ETCs (EU-listed)
   "SPUT": { symbol: "SPUT", exchange: "LSE" },

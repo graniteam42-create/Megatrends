@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import type { Trend } from "@/lib/types";
-import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS, TREND_IMAGES } from "@/lib/seed-data";
+import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS, CONVERGENCES, getTrendImage } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
+import ConvergenceNetwork from "./ConvergenceNetwork";
 
 function perfColor(v: number | null) {
   if (v === null) return "#475569";
@@ -107,6 +108,9 @@ export default function LandscapeTab({
           <tbody>
             {sorted.map((t) => {
               const p = performance[t.id];
+              // Use benchmarkTicker from trend itself, fall back to performance data
+              const ticker = t.benchmarkTicker || p?.ticker;
+              const img = getTrendImage(t.id, t.name, t.description, t.image);
               return (
                 <tr
                   key={t.id}
@@ -115,8 +119,8 @@ export default function LandscapeTab({
                 >
                   <td className="px-3 py-2.5 font-semibold">
                     <div className="flex items-center gap-2.5">
-                      {TREND_IMAGES[t.id] && (
-                        <img src={TREND_IMAGES[t.id].thumb} alt="" className="w-24 h-10 rounded object-cover shrink-0" />
+                      {img && (
+                        <img src={img.thumb} alt="" className="w-24 h-10 rounded object-cover shrink-0" />
                       )}
                       {t.name}
                     </div>
@@ -131,8 +135,8 @@ export default function LandscapeTab({
                     {t.mispricingScore}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{t.horizon}</td>
-                  <td className="px-3 py-2.5 font-mono" style={{ color: "#00e5ff" }} title={p?.ticker ? (TICKER_DESCRIPTIONS[p.ticker] || p.ticker) : ""}>
-                    {p?.ticker ?? "—"}
+                  <td className="px-3 py-2.5 font-mono" style={{ color: "#00e5ff" }} title={ticker ? (TICKER_DESCRIPTIONS[ticker] || ticker) : ""}>
+                    {ticker ?? "—"}
                   </td>
                   <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(p?.perf20d ?? null) }}>
                     {perfText(p?.perf20d ?? null)}
@@ -149,11 +153,11 @@ export default function LandscapeTab({
 
       <h3 className="mt-8 text-base font-semibold text-[#ffea00]">Scenario Matrix</h3>
       <p className="text-[13px] text-[#94a3b8] mt-1 mb-3.5">Probability-weighted futures</p>
-      <div className="grid grid-cols-3 gap-3.5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
         {SCENARIOS.map((sc, i) => {
           const c = sc.type === "base" ? "#ffea00" : sc.type === "bear" ? "#ff1744" : "#00e676";
           return (
-            <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-5" style={{ borderLeft: `3px solid ${c}` }}>
+            <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] p-4 sm:p-5" style={{ borderLeft: `3px solid ${c}` }}>
               <div className="flex justify-between mb-2">
                 <h4 className="text-sm font-semibold" style={{ color: c }}>{sc.name}</h4>
                 <Badge color={c}>{sc.prob}%</Badge>
@@ -164,6 +168,10 @@ export default function LandscapeTab({
           );
         })}
       </div>
+
+      <h3 className="mt-8 text-base font-semibold text-[#c084fc]">Convergence Network</h3>
+      <p className="text-[13px] text-[#94a3b8] mt-1 mb-2">Hover to explore connections between trends — {CONVERGENCES.length} convergence zones</p>
+      <ConvergenceNetwork trends={trends} convergences={CONVERGENCES} />
     </div>
   );
 }

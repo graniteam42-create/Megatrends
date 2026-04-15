@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import type { Trend } from "@/lib/types";
 import { STAGES } from "@/lib/seed-data";
+import { extractBenchmarkTicker } from "@/lib/ticker-map";
+import { fetchTrendImage } from "@/lib/fetch-trend-image";
 
 const LS_DISCOVERED = "tc_discovered";
 
@@ -10,6 +12,7 @@ interface DiscoveredTrend {
   name: string;
   thesis: string;
   keyTickers: string;
+  benchmarkTicker?: string;
   whyMispriced: string;
 }
 
@@ -93,7 +96,7 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: "Suggest 5 NEW mega-trends not in the user's current list. IMPORTANT: For keyTickers, strongly prefer tickers available on EODHD (US-listed stocks and ETFs, or major EU-listed ETFs on XETRA/LSE). Avoid obscure EU instruments, certificates, or tickers unlikely to have price data on EODHD. Return ONLY a valid JSON array (no markdown fences, no explanation before or after) of objects with these exact fields: name (string), thesis (string, 2-3 sentences), keyTickers (string, comma-separated ticker symbols with brief descriptions in parentheses), whyMispriced (string, 2-3 sentences on why the market is missing this).",
+          system: "Suggest 5 NEW mega-trends not in the user's current list. IMPORTANT: For keyTickers, strongly prefer US-listed stocks and ETFs available on EODHD. Return ONLY a valid JSON array (no markdown fences) of objects with these exact fields: name (string), thesis (string, 2-3 sentences), keyTickers (string, comma-separated ticker symbols with brief descriptions), benchmarkTicker (single US-listed ticker that best tracks this trend — must be a real tradeable symbol like XYL, ROBO, URA etc.), whyMispriced (string, 2-3 sentences).",
           prompt: "Current trends: " + trends.map((t) => t.name).join(", "),
           tier: "scan",
         }),
@@ -115,22 +118,29 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
   }
 
   function addDiscoveredTrend(dt: DiscoveredTrend, index: number) {
+    const keyTickers = dt.keyTickers || "";
+    const trendId = "t" + Date.now();
     const newTrend: Trend = {
-      id: "t" + Date.now(),
+      id: trendId,
       name: dt.name,
       description: dt.thesis,
       thesis: dt.thesis,
       bearCase: dt.whyMispriced,
-      investmentMap: dt.keyTickers,
+      investmentMap: keyTickers,
       confidence: 50,
       mispricingScore: 60,
       subTrends: [],
       stage: 1,
       horizon: "2-5 years",
       signals: [],
+      benchmarkTicker: dt.benchmarkTicker || extractBenchmarkTicker(keyTickers),
     };
     setTrends((p) => [...p, newTrend]);
     setAddedNames((prev) => new Set(prev).add(dt.name));
+    // Fetch unique image in background
+    fetchTrendImage(dt.name).then((img) => {
+      if (img) setTrends((p) => p.map((t) => t.id === trendId ? { ...t, image: img } : t));
+    });
   }
 
   function dismissDiscovered(index: number) {
@@ -178,7 +188,7 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
       <h2 className="text-xl font-semibold mb-1.5">Strategy Lab</h2>
       <p className="text-[13px] text-[#94a3b8] mb-6">AI-powered tools to stress-test and evolve your investment framework</p>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {cards.map((c, i) => (
           <button
             key={i}
