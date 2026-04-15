@@ -22,6 +22,17 @@ const PALETTE = [
   "#a78bfa", "#34d399", "#fbbf24", "#f87171", "#38bdf8",
 ];
 
+// Determine if a hex color is "dark" — if so, use white text on it
+function isColorDark(hex: string): boolean {
+  const c = hex.replace("#", "");
+  const r = parseInt(c.substring(0, 2), 16);
+  const g = parseInt(c.substring(2, 4), 16);
+  const b = parseInt(c.substring(4, 6), 16);
+  // Perceived luminance formula
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.55;
+}
+
 function getSliceColor(index: number, name: string): string {
   // Assign stable colors based on asset type keywords
   const lower = name.toLowerCase();
@@ -106,7 +117,7 @@ export function PieChart({ allocations }: { allocations: Allocation[] }) {
               y={s.ly}
               textAnchor="middle"
               dominantBaseline="central"
-              fill="#0a0c10"
+              fill={isColorDark(s.color) ? "#e0e4ec" : "#0a0c10"}
               fontSize={s.pct >= 10 ? 11 : 9}
               fontWeight={700}
               fontFamily="JetBrains Mono, monospace"
