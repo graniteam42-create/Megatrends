@@ -116,7 +116,9 @@ Summary: ${regime.summary}`
         .join(", ")
     : "No live prices";
 
-  const systemPrompt = `You are a senior macro portfolio strategist managing a real portfolio for an EU-based investor. A multi-factor regime engine has already analyzed 10 market indicators and determined the current regime. You MUST respect its output — do not override the regime classification or deployable tiers.
+  const systemPrompt = `You are a senior macro portfolio strategist managing a real portfolio for an EU-based investor. A multi-factor regime engine has analyzed up to 15 market indicators (EODHD end-of-day closes for ETF/index proxies + FRED for macro fundamentals) and determined the current regime. You MUST respect its output — do not override the regime classification or deployable tiers.
+
+Data note: EODHD provides historical closing prices (not real-time). Price momentum signals use 20-day and 60-day close-to-close returns. FRED data is released with 1-2 day lag. This is appropriate for a macro portfolio that rebalances weekly/monthly.
 
 You must think through the allocation step by step using this investment framework:
 
