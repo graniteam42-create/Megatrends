@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import type { Trend } from "@/lib/types";
 import { STAGES } from "@/lib/seed-data";
+import { extractBenchmarkTicker } from "@/lib/ticker-map";
 
 const LS_DISCOVERED = "tc_discovered";
 
@@ -115,19 +116,21 @@ export default function StrategyLabTab({ trends, setTrends }: { trends: Trend[];
   }
 
   function addDiscoveredTrend(dt: DiscoveredTrend, index: number) {
+    const keyTickers = dt.keyTickers || "";
     const newTrend: Trend = {
       id: "t" + Date.now(),
       name: dt.name,
       description: dt.thesis,
       thesis: dt.thesis,
       bearCase: dt.whyMispriced,
-      investmentMap: dt.keyTickers,
+      investmentMap: keyTickers,
       confidence: 50,
       mispricingScore: 60,
       subTrends: [],
       stage: 1,
       horizon: "2-5 years",
       signals: [],
+      benchmarkTicker: extractBenchmarkTicker(keyTickers),
     };
     setTrends((p) => [...p, newTrend]);
     setAddedNames((prev) => new Set(prev).add(dt.name));

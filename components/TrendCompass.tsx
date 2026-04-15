@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Trend, PriceData } from "@/lib/types";
 import { SEED_TRENDS, DEFAULT_PRICES, DEFAULT_PERFORMANCE } from "@/lib/seed-data";
+import { extractBenchmarkTicker } from "@/lib/ticker-map";
 import LandscapeTab from "./LandscapeTab";
 import AnalysisTab from "./AnalysisTab";
 import PositionsTab from "./PositionsTab";
@@ -50,6 +51,12 @@ export default function TrendCompass() {
     setTrendsRaw((prev) => {
       const next = typeof v === "function" ? v(prev) : v;
       saveLS(LS_TRENDS, next);
+      // Also sync to server for persistence across deploys
+      fetch("/api/trends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      }).catch(() => {});
       return next;
     });
   }, []);
@@ -63,13 +70,37 @@ export default function TrendCompass() {
   }, []);
 
 
-  // Load persisted data from localStorage (survives deploys), fallback to server
+  // Load persisted data: try localStorage first, then server
   useEffect(() => {
     const lsTrends = loadLS<Trend[] | null>(LS_TRENDS, null);
     const lsScans = loadLS<Record<string, { result: string; ts: string; model?: string }> | null>(LS_SCANS, null);
-    if (lsTrends && lsTrends.length) setTrendsRaw(lsTrends);
+
+    if (lsTrends && lsTrends.length) {
+      // Migrate: auto-populate benchmarkTicker for trends that don't have one
+      const migrated = lsTrends.map((t: Trend) => {
+        if (!t.benchmarkTicker && t.investmentMap) {
+          return { ...t, benchmarkTicker: extractBenchmarkTicker(t.investmentMap) };
+        }
+        return t;
+      });
+      setTrendsRaw(migrated);
+      saveLS(LS_TRENDS, migrated);
+      setReady(true);
+    } else {
+      // localStorage empty (new browser/cleared cache) — try server
+      fetch("/api/trends")
+        .then((r) => r.json())
+        .then((serverTrends) => {
+          if (Array.isArray(serverTrends) && serverTrends.length) {
+            setTrendsRaw(serverTrends);
+            saveLS(LS_TRENDS, serverTrends);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setReady(true));
+    }
     if (lsScans) setScansRaw(lsScans);
-    setReady(true);
+    if (lsTrends && lsTrends.length) setReady(true);
   }, []);
 
   // Load cached prices from localStorage (manual refresh only)
@@ -95,9 +126,14 @@ export default function TrendCompass() {
     setPricesRefreshing(true);
     setPricesMessage("");
     try {
+      // POST all trends (including user-added) so performance API can fetch their tickers
       const [priceRes, perfRes] = await Promise.all([
         fetch("/api/prices"),
-        fetch("/api/performance"),
+        fetch("/api/performance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(trends),
+        }),
       ]);
       const priceData = await priceRes.json();
       const perfData = await perfRes.json();

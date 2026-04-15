@@ -11,6 +11,7 @@ export interface Trend {
   bearCase: string;
   investmentMap: string;
   mispricingScore: number;
+  benchmarkTicker?: string;
 }
 
 export interface Scenario {

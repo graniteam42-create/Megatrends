@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import type { Trend } from "@/lib/types";
-import { STAGES, STAGE_COLORS, HORIZONS, CONVERGENCES, TREND_IMAGES } from "@/lib/seed-data";
+import { STAGES, STAGE_COLORS, HORIZONS, CONVERGENCES, getTrendImage } from "@/lib/seed-data";
+import { extractBenchmarkTicker } from "@/lib/ticker-map";
 import { StagePipeline, Meter, Badge } from "./StagePipeline";
 
 interface ScanData {
@@ -74,6 +75,7 @@ export default function AnalysisTab({
   }
 
   function addTrend() {
+    const investMap = typeof nf.investmentMap === "string" ? nf.investmentMap : "";
     setTrends((p) => [
       ...p,
       {
@@ -84,6 +86,7 @@ export default function AnalysisTab({
         confidence: +nf.confidence,
         stage: +nf.stage,
         mispricingScore: +nf.mispricingScore,
+        benchmarkTicker: extractBenchmarkTicker(investMap),
       } as unknown as Trend,
     ]);
     setNf(empty);
@@ -438,19 +441,21 @@ export default function AnalysisTab({
                 <button
                   className="px-3 py-1.5 rounded-md bg-[#00e676] text-[#0a0c10] text-[12px] font-semibold font-mono flex-shrink-0"
                   onClick={() => {
+                    const investMap = s.investmentMap || "";
                     const newTrend: Trend = {
                       id: "t" + Date.now(),
                       name: s.name || "Untitled",
                       description: s.description || "",
                       thesis: s.thesis || "",
                       bearCase: s.bearCase || "",
-                      investmentMap: s.investmentMap || "",
+                      investmentMap: investMap,
                       confidence: s.confidence ?? 50,
                       mispricingScore: s.mispricingScore ?? 50,
                       subTrends: Array.isArray(s.subTrends) ? s.subTrends : [],
                       stage: s.stage ?? 0,
                       horizon: s.horizon || "2-5 years",
                       signals: [],
+                      benchmarkTicker: extractBenchmarkTicker(investMap),
                     };
                     setTrends((p) => [...p, newTrend]);
                     setSuggestions((prev) => prev.filter((_, idx) => idx !== i));
@@ -472,39 +477,43 @@ export default function AnalysisTab({
         const relConv = CONVERGENCES.filter((z) => z.trends.includes(t.id));
         return (
           <div key={t.id} id={`trend-${t.id}`} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] overflow-hidden mb-3.5">
-            {TREND_IMAGES[t.id] && (
+            {(() => {
+              const img = getTrendImage(t.id, t.name, t.description);
+              return img ? (
               <div className="relative h-44 w-full">
-                <img src={TREND_IMAGES[t.id].url} alt="" className="w-full h-full object-cover" />
+                <img src={img.url} alt="" className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-b from-[#11182700] via-[#11182766] to-[#111827]" />
                 <div className="absolute bottom-3 left-5 right-5 flex items-end justify-between">
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     <h3 className="text-[19px] font-bold drop-shadow-lg">{t.name}</h3>
                     <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
                     <Badge color="#94a3b8">{t.horizon}</Badge>
+                    {t.benchmarkTicker && <Badge color="#00e5ff">{t.benchmarkTicker}</Badge>}
                   </div>
-                  <div className="flex gap-1.5">
+                  <div className="flex gap-1.5 shrink-0">
                     <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
                     <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
                   </div>
                 </div>
               </div>
-            )}
-            <div className="p-5">
-            {!TREND_IMAGES[t.id] && (
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex-1">
-                <div className="flex items-center gap-2.5 mb-1.5">
-                  <h3 className="text-[17px] font-semibold">{t.name}</h3>
-                  <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
-                  <Badge color="#94a3b8">{t.horizon}</Badge>
+              ) : (
+              <div className="p-5 pb-0 flex justify-between items-start mb-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
+                    <h3 className="text-[17px] font-semibold">{t.name}</h3>
+                    <Badge color={STAGE_COLORS[t.stage]}>{STAGES[t.stage]}</Badge>
+                    <Badge color="#94a3b8">{t.horizon}</Badge>
+                    {t.benchmarkTicker && <Badge color="#00e5ff">{t.benchmarkTicker}</Badge>}
+                  </div>
+                </div>
+                <div className="flex gap-1.5 ml-3 shrink-0">
+                  <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
+                  <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
                 </div>
               </div>
-              <div className="flex gap-1.5 ml-3">
-                <button className="px-4 py-2 rounded-md bg-[#00e5ff] text-[#0a0c10] text-[13px] font-semibold font-mono disabled:opacity-50" onClick={() => doScan(t)} disabled={loading}>Scan</button>
-                <button className="px-4 py-2 rounded-md bg-[rgba(255,23,68,0.15)] text-[#ff1744] border border-[#ff174433] text-[13px] font-semibold font-mono" onClick={() => setDeleteConfirm({ id: t.id, name: t.name })}>X</button>
-              </div>
-            </div>
-            )}
+              );
+            })()}
+            <div className="p-5">
             <p className="text-[13px] text-[#94a3b8] leading-relaxed mb-2">{t.description}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <StagePipeline stage={t.stage} onChange={(v) => setTrends((p) => p.map((x) => (x.id === t.id ? { ...x, stage: v } : x)))} />

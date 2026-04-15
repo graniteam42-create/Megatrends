@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Trend } from "@/lib/types";
-import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS, TREND_IMAGES, CONVERGENCES } from "@/lib/seed-data";
+import { STAGES, STAGE_COLORS, SCENARIOS, HORIZONS, CONVERGENCES, getTrendImage } from "@/lib/seed-data";
 import { Badge } from "./StagePipeline";
 import ConvergenceNetwork from "./ConvergenceNetwork";
 
@@ -108,6 +108,9 @@ export default function LandscapeTab({
           <tbody>
             {sorted.map((t) => {
               const p = performance[t.id];
+              // Use benchmarkTicker from trend itself, fall back to performance data
+              const ticker = t.benchmarkTicker || p?.ticker;
+              const img = getTrendImage(t.id, t.name, t.description);
               return (
                 <tr
                   key={t.id}
@@ -116,8 +119,8 @@ export default function LandscapeTab({
                 >
                   <td className="px-3 py-2.5 font-semibold">
                     <div className="flex items-center gap-2.5">
-                      {TREND_IMAGES[t.id] && (
-                        <img src={TREND_IMAGES[t.id].thumb} alt="" className="w-24 h-10 rounded object-cover shrink-0" />
+                      {img && (
+                        <img src={img.thumb} alt="" className="w-24 h-10 rounded object-cover shrink-0" />
                       )}
                       {t.name}
                     </div>
@@ -132,8 +135,8 @@ export default function LandscapeTab({
                     {t.mispricingScore}
                   </td>
                   <td className="px-3 py-2.5 whitespace-nowrap">{t.horizon}</td>
-                  <td className="px-3 py-2.5 font-mono" style={{ color: "#00e5ff" }} title={p?.ticker ? (TICKER_DESCRIPTIONS[p.ticker] || p.ticker) : ""}>
-                    {p?.ticker ?? "—"}
+                  <td className="px-3 py-2.5 font-mono" style={{ color: "#00e5ff" }} title={ticker ? (TICKER_DESCRIPTIONS[ticker] || ticker) : ""}>
+                    {ticker ?? "—"}
                   </td>
                   <td className="px-3 py-2.5 font-mono" style={{ color: perfColor(p?.perf20d ?? null) }}>
                     {perfText(p?.perf20d ?? null)}
