@@ -1,14 +1,25 @@
 import { callAI } from "@/lib/ai-router";
+import { computeRegime } from "@/lib/regime";
 import Redis from "ioredis";
 
 const KV_ALLOCATION = "tc:allocation";
 const KV_ALLOCATION_HISTORY = "tc:allocation_history";
+
+interface RegimeData {
+  regime: string;
+  overallScore: number;
+  signals: { name: string; value: number | null; interpretation: string; score: number }[];
+  summary: string;
+  deployableTiers: number[];
+  equityCorrelationCap: number;
+}
 
 interface AllocationEntry {
   date: string;
   allocations: { name: string; pct: number; color?: string }[];
   reasoning?: string;
   model?: string;
+  regime?: RegimeData;
 }
 
 function getRedis(): Redis | null {
@@ -65,6 +76,26 @@ export async function POST(req: Request) {
     } catch { /* regenerate */ }
   }
 
+  // --- Compute multi-factor regime assessment ---
+  let regime;
+  try {
+    regime = await computeRegime();
+  } catch {
+    regime = null;
+  }
+
+  const regimeBlock = regime
+    ? `REGIME ASSESSMENT (computed from ${regime.signals.length} independent indicators):
+Overall: ${regime.regime} (composite score ${regime.overallScore.toFixed(2)})
+Deployable tiers: ${regime.deployableTiers.join(", ")}
+Max equity-correlated allocation: ${regime.equityCorrelationCap}%
+
+Individual signals:
+${regime.signals.map((s) => `• ${s.name}: ${s.value !== null ? s.value.toFixed?.(1) ?? s.value : "N/A"} → ${s.interpretation} [score: ${s.score > 0 ? "+" : ""}${s.score}]`).join("\n")}
+
+Summary: ${regime.summary}`
+    : "REGIME: Unable to compute — use conservative defaults (CAUTIOUS, deploy T1+T4 only, 30% equity-correlated cap)";
+
   // --- Build rich context ---
 
   const trendSummary = (trends || [])
@@ -77,9 +108,7 @@ export async function POST(req: Request) {
       `• T${p.tier} ${p.dir} ${p.ticker} (${p.name}) — ${p.type}, fee ${p.fee}, conv ${p.conv}, corr: ${p.corr}\n  Status: ${p.status} | When: ${p.when}\n  Why: ${p.why}`)
     .join("\n\n");
 
-  // Compute VIX and key price levels
   const priceMap = prices as Record<string, { close: number; change_p: number }> | null;
-  const vix = priceMap?.["VIX"]?.close;
   const priceLines = priceMap
     ? Object.entries(priceMap)
         .filter(([, v]) => v && typeof v.close === "number")
@@ -87,7 +116,9 @@ export async function POST(req: Request) {
         .join(", ")
     : "No live prices";
 
-  const systemPrompt = `You are a senior macro portfolio strategist managing a real portfolio for an EU-based investor. You must think through the allocation step by step using this investment framework:
+  const systemPrompt = `You are a senior macro portfolio strategist managing a real portfolio for an EU-based investor. A multi-factor regime engine has already analyzed 10 market indicators and determined the current regime. You MUST respect its output — do not override the regime classification or deployable tiers.
+
+You must think through the allocation step by step using this investment framework:
 
 FRAMEWORK RULES (non-negotiable):
 1. PHYSICAL vs MINERS: Physical commodity ETCs (WGLD, WSLV, SPUT, OD7C) are anti-correlated to equities — deploy them NOW regardless of market conditions. Miners (GDX, WNUC, RARE, CCJ) carry equity beta — deploy ONLY during corrections (VIX>30 or -15%+ drawdown).
@@ -100,16 +131,19 @@ FRAMEWORK RULES (non-negotiable):
 8. DOTCOM SURVIVOR STRATEGY: Quality AI/infra companies (NVDA, AVGO, GEV, ETN) will crash with the junk during AI trough of disillusionment. The crash watchlist is for buying those at -40 to -60% off highs, NOT at current prices.
 
 REASONING STEPS (follow these in order):
-Step 1: Assess market regime from VIX and prices — calm, stressed, or crisis?
-Step 2: Determine which tiers are deployable right now based on regime.
-Step 3: Weight by trend confidence × mispricing score — higher score = higher allocation.
-Step 4: Check correlation balance — portfolio should not be >60% equity-correlated.
-Step 5: Apply scenario weights — ensure portfolio survives the 30% bear case.
-Step 6: Determine if any crash watchlist names are in their buy zones.
-Step 7: Size hedges proportional to equity exposure.`;
+Step 1: READ the regime assessment below — it already analyzed VIX, credit spreads, gold, dollar, copper/gold ratio, breadth, bonds, bitcoin correlation, and energy. Do NOT override its regime classification.
+Step 2: RESPECT the deployable tiers from the regime engine. If it says T1+T4 only, do NOT allocate to miners or individual stocks.
+Step 3: RESPECT the equity-correlated cap. Sum all equity-correlated allocations and ensure they stay under the cap.
+Step 4: Weight within deployable tiers by trend confidence × mispricing score. Higher product = higher allocation.
+Step 5: Read each signal interpretation — if gold is surging, overweight physical gold. If credit is stressing, overweight anti-correlated. If dollar is weakening, commodity tailwind.
+Step 6: Apply scenario weights — 50% base, 30% bear, 20% bull. The portfolio must survive the bear case.
+Step 7: Check if any crash watchlist names are in buy zones (only relevant in STRESSED or CRISIS regime).
+Step 8: Size hedges proportional to total equity-correlated exposure.
+Step 9: Assign remainder to cash/dry powder if conditions don't warrant full deployment.`;
 
   const prompt = `CURRENT DATE: ${today()}
-MARKET REGIME: VIX at ${vix !== undefined ? vix.toFixed(1) : "unknown"}
+
+${regimeBlock}
 
 MEGA-TRENDS:
 ${trendSummary || "No trends defined"}
@@ -128,7 +162,7 @@ Return ONLY a valid JSON object with these fields:
     {"name": "Cash / Dry Powder", "pct": 10},
     ...
   ],
-  "reasoning": "3-5 sentences: What market regime are we in? Which tiers are deployable? What's the key tension or trade-off in this allocation? What would change it?"
+  "reasoning": "4-6 sentences: State the regime and its key drivers. Which signals most influenced the allocation? What's the main tension or trade-off? What specific signal change would trigger a rebalance (e.g. 'if VIX crosses 30' or 'if credit spreads widen further')?"
 }
 
 Requirements:
@@ -153,6 +187,14 @@ Requirements:
       allocations: parsed.allocations || [],
       reasoning: parsed.reasoning || "",
       model,
+      regime: regime ? {
+        regime: regime.regime,
+        overallScore: regime.overallScore,
+        signals: regime.signals,
+        summary: regime.summary,
+        deployableTiers: regime.deployableTiers,
+        equityCorrelationCap: regime.equityCorrelationCap,
+      } : undefined,
     };
 
     // Validate allocations sum
