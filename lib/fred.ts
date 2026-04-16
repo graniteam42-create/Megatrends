@@ -80,20 +80,30 @@ export async function fetchFredIndicators(): Promise<FredIndicators> {
     hyOAS,          // HY option-adjusted spread
     fedFunds,       // Fed funds rate
     breakeven5Y,    // 5Y breakeven inflation
+    m2,             // M2 money supply (monthly) — need 13 observations to compute YoY
   ] = await Promise.all([
-    fetchSeries("T10Y2Y", 5),       // 10Y-2Y spread
-    fetchSeries("DFII10", 5),       // 10Y real yield (TIPS)
-    fetchSeries("DBAA", 5),         // Moody's BAA yield
-    fetchSeries("DAAA", 5),         // Moody's AAA yield
-    fetchSeries("BAMLH0A0HYM2", 5), // ICE BofA HY OAS
-    fetchSeries("DFF", 3),          // Fed funds effective rate
-    fetchSeries("T5YIE", 5),        // 5Y breakeven inflation
+    fetchSeries("T10Y2Y", 5),
+    fetchSeries("DFII10", 5),
+    fetchSeries("DBAA", 5),
+    fetchSeries("DAAA", 5),
+    fetchSeries("BAMLH0A0HYM2", 5),
+    fetchSeries("DFF", 3),
+    fetchSeries("T5YIE", 5),
+    fetchSeries("M2SL", 14),
   ]);
 
   const baaVal = latestValue(baaYield);
   const aaaVal = latestValue(aaaYield);
   const baaPrev = previousValue(baaYield, 4);
   const aaaPrev = previousValue(aaaYield, 4);
+
+  // M2 YoY: compare latest monthly value to value 12 months prior.
+  let m2YoY: number | null = null;
+  const m2Latest = latestValue(m2);
+  const m2YearAgo = previousValue(m2, 12);
+  if (m2Latest !== null && m2YearAgo !== null && m2YearAgo !== 0) {
+    m2YoY = ((m2Latest - m2YearAgo) / m2YearAgo) * 100;
+  }
 
   return {
     yieldCurve2s10s: latestValue(yc2s10s),
@@ -107,6 +117,6 @@ export async function fetchFredIndicators(): Promise<FredIndicators> {
     fedFundsRate: latestValue(fedFunds),
     breakeven5Y: latestValue(breakeven5Y),
     breakeven5YPrev: previousValue(breakeven5Y, 4),
-    m2YoY: null, // Would need 12mo of monthly data — skip for now
+    m2YoY,
   };
 }

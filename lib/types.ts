@@ -13,12 +13,20 @@ export interface Trend {
   mispricingScore: number;
   benchmarkTicker?: string;
   image?: { url: string; thumb: string; credit: string };
+  // Quantitative invalidation trigger: the single measurable fact that would
+  // force reconsideration of the thesis. Kept optional for backwards compat.
+  invalidationMetric?: {
+    name: string;
+    threshold: string;
+    direction: "above" | "below" | "cross";
+    source?: string;
+  };
 }
 
 export interface Scenario {
   name: string;
   prob: number;
-  type: "base" | "bear" | "bull";
+  type: "base" | "bear" | "bull" | "stagflation";
   desc: string;
   portfolio: string;
 }

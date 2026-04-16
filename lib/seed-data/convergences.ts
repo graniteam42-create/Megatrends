@@ -12,4 +12,10 @@ export const CONVERGENCES: Convergence[] = [
   { trends: ["t3","t7"], name: "Copper Supercycle", insight: "All electrification needs copper. No new mines until 2028+." },
   { trends: ["t9","t3"], name: "Bridge State Energy Hubs", insight: "Bridge states with renewables supply clean energy to industrialized nations." },
   { trends: ["t10","t3"], name: "Carbon Alchemy", insight: "Cheap energy + CO2 capture = carbon becomes feedstock." },
+  // Newly added convergences
+  { trends: ["t11","t1","t3"], name: "Water-AI-Semi Nexus", insight: "TSMC alone draws ~150M gal/day; data centers need cooling; drought events correlate. Water is the binding constraint on the AI buildout — priced like a utility, worth a growth multiple." },
+  { trends: ["t5","t2"], name: "Demographic Fiscal Break", insight: "Aging populations → Medicare/pension blowout → forces the t2 repression. The causal chain means debasement isn't optional, it's demographic arithmetic." },
+  { trends: ["t4","t12"], name: "Food Weaponization", insight: "Grain corridor strikes, potash sanctions, phosphate export bans. Food becomes a trade/war instrument. Fertilizer oligopoly captures the rent." },
+  { trends: ["t7","t2"], name: "On-Chain Real-World Assets", insight: "PAXG, XAUT, tokenized treasuries, mine-backed stablecoins open a new source of demand for hard-asset collateral. Crypto-native capital flowing to real assets rather than competing with them." },
+  { trends: ["t13","t15"], name: "Overcapacity-Meets-Wage-Spiral", insight: "Chinese export deflation collides with Western wage stickiness. Net: goods disinflation, services stickiness — the stagflation recipe. Short margin-pressured EU industrials, long US pricing-power staples." },
 ];

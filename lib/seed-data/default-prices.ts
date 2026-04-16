@@ -44,4 +44,22 @@ export const DEFAULT_PRICES: Record<string, PriceData> = {
   // === Market Indicators ===
   "VIX":   { close: 18.15, change_p: -5.07, volume: 0, previousClose: 19.12 },
   "SPY":   { close: 686.10, change_p: 0.98, volume: 53737879, previousClose: 679.46 },
+
+  // === New positions (approximate values; replaced by live EODHD when available) ===
+  "ITPS":  { close: 108.42, change_p: 0.15, volume: 0 },      // iShares $ TIPS UCITS
+  "EUDF":  { close: 47.80, change_p: 1.20, volume: 0 },       // VanEck Defence UCITS
+  "IQQQ":  { close: 54.30, change_p: -0.40, volume: 0 },      // iShares Global Water UCITS
+  "MOO":   { close: 84.15, change_p: 0.25, volume: 0 },
+  "IFRA":  { close: 62.40, change_p: 0.10, volume: 0 },
+  "XOM":   { close: 118.70, change_p: 0.80, volume: 0 },
+  "DXJ":   { close: 118.20, change_p: -0.60, volume: 0 },
+  "XYL":   { close: 135.10, change_p: 0.55, volume: 0 },
+  "NTR":   { close: 52.40, change_p: 1.10, volume: 0 },
+  "TAIL":  { close: 124.60, change_p: -0.30, volume: 0 },
+  "3TYS":  { close: 6.85, change_p: 0.45, volume: 0 },
+  "KWEB":  { close: 32.10, change_p: -0.70, volume: 0 },
+  // Crash watchlist additions
+  "MSFT":  { close: 440.12, change_p: 0.35, volume: 0 },
+  "LLY":   { close: 720.55, change_p: -1.20, volume: 0 },
+  "BRK.B": { close: 480.90, change_p: 0.20, volume: 0 },
 };
