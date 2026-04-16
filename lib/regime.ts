@@ -37,6 +37,7 @@ export async function computeRegime(): Promise<RegimeAssessment> {
     copx20d, rsp20d,
     spyPrice, rspPrice,
     uup20d, xle20d,
+    gldPrice, slvPrice,
   ] = await Promise.all([
     getPrice("VIX"),
     getPerf("SPY", 20),
@@ -56,6 +57,8 @@ export async function computeRegime(): Promise<RegimeAssessment> {
     getPrice("RSP"),
     getPerf("UUP", 20),
     getPerf("XLE", 20),
+    getPrice("GLD"),
+    getPrice("SLV"),
   ]);
 
   const signals: RegimeSignal[] = [];
@@ -177,6 +180,20 @@ export async function computeRegime(): Promise<RegimeAssessment> {
     signals.push({ name: "Energy Sector (XLE 20d)", value: xle20d, interpretation: interp, score });
   }
 
+  // 11. Gold/Silver ratio — classic monetary-stress tell
+  if (gldPrice !== null && slvPrice !== null && slvPrice > 0) {
+    // GLD and SLV both hold 1/10 oz. Ratio of prices ≈ gold/silver ratio.
+    const ratio = gldPrice / slvPrice;
+    let score: number;
+    let interp: string;
+    if (ratio > 100) { score = -1.5; interp = `Extreme G/S ratio ${ratio.toFixed(0)} — crisis territory, silver oversold, commodity stress`; }
+    else if (ratio > 85) { score = -0.5; interp = `High G/S ratio ${ratio.toFixed(0)} — monetary stress rising, silver lagging`; }
+    else if (ratio > 70) { score = 0; interp = `Normal G/S ratio ${ratio.toFixed(0)} — steady regime`; }
+    else if (ratio > 55) { score = 0.5; interp = `Low G/S ratio ${ratio.toFixed(0)} — silver catching up, risk-on for precious metals`; }
+    else { score = 1; interp = `Very low G/S ratio ${ratio.toFixed(0)} — silver in full rally, late-cycle monetary regime`; }
+    signals.push({ name: "Gold/Silver Ratio", value: +ratio.toFixed(1), interpretation: interp, score });
+  }
+
   // --- FRED indicators (macro fundamentals from the source) ---
   const fred = await fetchFredIndicators();
 
@@ -239,7 +256,20 @@ export async function computeRegime(): Promise<RegimeAssessment> {
     signals.push({ name: "HY OAS (FRED)", value: oas, interpretation: interp, score });
   }
 
-  // 15. 5Y Breakeven inflation — inflation expectations
+  // 15. M2 YoY — direct monetary expansion gauge (repression fuel)
+  if (fred.m2YoY !== null) {
+    const m2 = fred.m2YoY;
+    let score: number;
+    let interp: string;
+    if (m2 < -1) { score = 0.5; interp = `M2 contracting ${m2.toFixed(1)}% YoY — tight money, disinflationary pressure`; }
+    else if (m2 < 3) { score = 0; interp = `M2 growth ${m2.toFixed(1)}% YoY — normal baseline`; }
+    else if (m2 < 7) { score = -0.5; interp = `M2 expanding ${m2.toFixed(1)}% YoY — supportive of hard assets`; }
+    else if (m2 < 12) { score = -1; interp = `M2 surging ${m2.toFixed(1)}% YoY — active debasement, strongly confirms t2 thesis`; }
+    else { score = -1.5; interp = `M2 exploding ${m2.toFixed(1)}% YoY — currency crisis territory, max overweight physical`; }
+    signals.push({ name: "M2 Money Supply YoY (FRED)", value: +m2.toFixed(1), interpretation: interp, score });
+  }
+
+  // 16. 5Y Breakeven inflation — inflation expectations
   if (fred.breakeven5Y !== null) {
     const be = fred.breakeven5Y;
     const prev = fred.breakeven5YPrev;

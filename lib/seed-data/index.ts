@@ -1,9 +1,9 @@
 export { STAGES, STAGE_COLORS, HORIZONS, TIER_INFO } from "./constants";
-export { SEED_TRENDS } from "./trends";
+export { SEED_TRENDS } from "./trends/index";
 export { SCENARIOS } from "./scenarios";
 export { CONVERGENCES } from "./convergences";
 export { CATALYSTS } from "./catalysts";
-export { POSITIONS } from "./positions";
+export { POSITIONS } from "./positions/index";
 export { CRASH_WATCHLIST } from "./crash-watchlist";
 export { TRADE_LEGS, KEY_CONCEPTS } from "./trade-legs";
 export { DEFAULT_PRICES } from "./default-prices";
