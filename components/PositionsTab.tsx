@@ -70,10 +70,12 @@ type SortCol = "ticker" | "name" | "dir" | "tier" | "type" | "price" | "perf20d"
 export default function PositionsTab({
   trends,
   prices,
+  highs,
   tickerPerf,
 }: {
   trends: Trend[];
   prices: Record<string, PriceData>;
+  highs?: Record<string, number>;
   tickerPerf?: Record<string, { perf20d: number | null; perf60d: number | null }>;
 }) {
   const [loading, setLoading] = useState(false);
@@ -429,7 +431,10 @@ export default function PositionsTab({
                 {CRASH_WATCHLIST.map((w, i) => {
                   const isSpec = w.quality.startsWith("SPEC");
                   const livePrice = safePrice(w.ticker);
-                  const highNum = parseFloat(w.high.replace(/[^0-9.]/g, ""));
+                  // Use dynamic 52-week high from EODHD, fall back to hardcoded
+                  const dynamicHigh = highs?.[w.ticker];
+                  const highNum = dynamicHigh || parseFloat(w.high.replace(/[^0-9.]/g, ""));
+                  const highDisplay = dynamicHigh ? `$${dynamicHigh.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : w.high;
                   const offHighLive = livePrice && highNum ? ((livePrice.close / highNum - 1) * 100).toFixed(1) : null;
                   const offVal = offHighLive ? parseFloat(offHighLive) : parseInt(w.offHigh);
                   const zoneStatus = getBuyZoneStatus(w);
@@ -452,7 +457,7 @@ export default function PositionsTab({
                       <td className="px-2 py-2.5 font-mono" style={{ color: zoneStatus === "in_zone" ? "#00e676" : "#00e5ff" }}>
                         {livePrice ? `$${livePrice.close.toFixed(2)}` : w.now}
                       </td>
-                      <td className="px-2 py-2.5 font-mono text-[#94a3b8]">{w.high}</td>
+                      <td className="px-2 py-2.5 font-mono text-[#94a3b8]">{highDisplay}</td>
                       <td className="px-2 py-2.5 font-mono font-semibold" style={{ color: offVal < -30 ? "#00e676" : "#ffea00" }}>
                         {offHighLive ? `${offHighLive}%` : w.offHigh}
                       </td>

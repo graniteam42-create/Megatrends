@@ -58,6 +58,46 @@ export async function fetchAllPrices(): Promise<Record<string, PriceData>> {
   return results;
 }
 
+export async function fetch52WeekHigh(ticker: string): Promise<number | null> {
+  if (!API_KEY) return null;
+  const mapping = TICKER_MAP[ticker];
+  const symbol = mapping?.symbol || ticker;
+  const exchange = mapping?.exchange || "US";
+
+  const to = new Date();
+  const from = new Date();
+  from.setFullYear(from.getFullYear() - 1);
+
+  const url = `${BASE}/eod/${symbol}.${exchange}?from=${formatDate(from)}&to=${formatDate(to)}&period=d&api_token=${API_KEY}&fmt=json`;
+  try {
+    const res = await fetch(url, { next: { revalidate: 86400 } }); // cache 24h
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length < 1) return null;
+    let maxHigh = 0;
+    for (const day of data) {
+      if (typeof day.high === "number" && day.high > maxHigh) maxHigh = day.high;
+    }
+    return maxHigh > 0 ? maxHigh : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchAll52WeekHighs(tickers: string[]): Promise<Record<string, number>> {
+  const results: Record<string, number> = {};
+  for (let i = 0; i < tickers.length; i += 5) {
+    const batch = tickers.slice(i, i + 5);
+    await Promise.all(
+      batch.map(async (ticker) => {
+        const high = await fetch52WeekHigh(ticker);
+        if (high !== null) results[ticker] = high;
+      })
+    );
+  }
+  return results;
+}
+
 export async function fetchHistoricalPerformance(
   ticker: string,
   days: number
