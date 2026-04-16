@@ -1,20 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { requireEnv } from "./env";
 
 function getAnthropic() {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY is not configured. Add it to your environment variables.");
-  }
-  return new Anthropic({ apiKey });
+  return new Anthropic({ apiKey: requireEnv("ANTHROPIC_API_KEY") });
 }
 
 function getGemini() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured. Add it to your environment variables.");
-  }
-  return new GoogleGenerativeAI(apiKey);
+  return new GoogleGenerativeAI(requireEnv("GEMINI_API_KEY"));
 }
 
 export async function callAI(
@@ -28,7 +21,7 @@ export async function callAI(
       systemInstruction: system,
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
-    return { result: result.response.text(), model: "Gemini 2.5 Pro" };
+    return { result: result.response.text(), model: "gemini-2.5-pro" };
   } else {
     const message = await getAnthropic().messages.create({
       model: "claude-sonnet-4-20250514",
@@ -40,6 +33,6 @@ export async function callAI(
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
       .map((b) => b.text)
       .join("\n");
-    return { result: text, model: "Claude Sonnet 4.6" };
+    return { result: text, model: "claude-sonnet-4" };
   }
 }

@@ -1,9 +1,8 @@
 import { callAI } from "@/lib/ai-router";
+import { kvGet, kvSet, KV_KEYS } from "@/lib/kv";
+import { logger } from "@/lib/logger";
 import { computeRegime } from "@/lib/regime";
-import Redis from "ioredis";
-
-const KV_ALLOCATION = "tc:allocation";
-const KV_ALLOCATION_HISTORY = "tc:allocation_history";
+import { extractJsonObject, safeParse, validateAllocation } from "@/lib/validate";
 
 interface RegimeData {
   regime: string;
@@ -18,70 +17,41 @@ interface AllocationEntry {
   date: string;
   allocations: { name: string; pct: number; color?: string }[];
   reasoning?: string;
-  model?: string;
   regime?: RegimeData;
-}
-
-function getRedis(): Redis | null {
-  const url = process.env.REDIS_URL || process.env.KV_URL;
-  if (!url) return null;
-  try {
-    return new Redis(url, { maxRetriesPerRequest: 1, connectTimeout: 5000, lazyConnect: true });
-  } catch { return null; }
 }
 
 function today(): string {
   return new Date().toISOString().split("T")[0];
 }
 
-// GET: Return cached allocation + history
 export async function GET() {
-  const redis = getRedis();
-  let current: AllocationEntry | null = null;
-  let history: AllocationEntry[] = [];
-
-  if (redis) {
-    try {
-      const raw = await redis.get(KV_ALLOCATION);
-      if (raw) current = JSON.parse(raw);
-      const histRaw = await redis.get(KV_ALLOCATION_HISTORY);
-      if (histRaw) history = JSON.parse(histRaw);
-    } catch { /* fallback below */ }
-  }
-
+  const current = await kvGet<AllocationEntry | null>(KV_KEYS.ALLOCATION, null);
+  const history = await kvGet<AllocationEntry[]>(KV_KEYS.ALLOCATION_HISTORY, []);
   return Response.json({ current, history });
 }
 
-// POST: Generate new allocation via AI (only if not already done today)
 export async function POST(req: Request) {
-  const body = await req.json();
+  let body: { trends?: unknown; positions?: unknown; prices?: unknown; force?: boolean } = {};
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
   const { trends, positions, prices, force } = body;
 
-  const redis = getRedis();
-  let current: AllocationEntry | null = null;
-  let history: AllocationEntry[] = [];
-
-  // Check if already generated today
-  if (redis && !force) {
-    try {
-      const raw = await redis.get(KV_ALLOCATION);
-      if (raw) {
-        current = JSON.parse(raw);
-        if (current && current.date === today()) {
-          const histRaw = await redis.get(KV_ALLOCATION_HISTORY);
-          if (histRaw) history = JSON.parse(histRaw);
-          return Response.json({ current, history, cached: true });
-        }
-      }
-    } catch { /* regenerate */ }
+  if (!force) {
+    const current = await kvGet<AllocationEntry | null>(KV_KEYS.ALLOCATION, null);
+    if (current && current.date === today()) {
+      const history = await kvGet<AllocationEntry[]>(KV_KEYS.ALLOCATION_HISTORY, []);
+      return Response.json({ current, history, cached: true });
+    }
   }
 
-  // --- Compute multi-factor regime assessment ---
-  let regime;
+  let regime: Awaited<ReturnType<typeof computeRegime>> | null = null;
   try {
     regime = await computeRegime();
-  } catch {
-    regime = null;
+  } catch (e) {
+    logger.warn("regime compute failed", { error: e instanceof Error ? e.message : String(e) });
   }
 
   const regimeBlock = regime
@@ -96,16 +66,16 @@ ${regime.signals.map((s) => `• ${s.name}: ${s.value !== null ? s.value.toFixed
 Summary: ${regime.summary}`
     : "REGIME: Unable to compute — use conservative defaults (CAUTIOUS, deploy T1+T4 only, 30% equity-correlated cap)";
 
-  // --- Build rich context ---
-
-  const trendSummary = (trends || [])
-    .map((t: { name: string; stage: number; confidence: number; mispricingScore: number; thesis: string; bearCase: string; investmentMap: string; horizon: string }) =>
-      `• ${t.name} [Stage ${t.stage}/4, Confidence ${t.confidence}%, Mispricing ${t.mispricingScore}/100, Horizon ${t.horizon}]\n  Thesis: ${t.thesis}\n  Bear case: ${t.bearCase || "N/A"}\n  Tickers: ${t.investmentMap || "N/A"}`)
+  const trendSummary = ((trends as Array<Record<string, unknown>>) || [])
+    .map((t) =>
+      `• ${t.name} [Stage ${t.stage}/4, Confidence ${t.confidence}%, Mispricing ${t.mispricingScore}/100, Horizon ${t.horizon}]\n  Thesis: ${t.thesis}\n  Bear case: ${t.bearCase || "N/A"}\n  Tickers: ${t.investmentMap || "N/A"}`
+    )
     .join("\n\n");
 
-  const positionSummary = (positions || [])
-    .map((p: { tier: number; dir: string; ticker: string; name: string; type: string; fee: string; conv: number; when: string; status: string; corr: string; why: string }) =>
-      `• T${p.tier} ${p.dir} ${p.ticker} (${p.name}) — ${p.type}, fee ${p.fee}, conv ${p.conv}, corr: ${p.corr}\n  Status: ${p.status} | When: ${p.when}\n  Why: ${p.why}`)
+  const positionSummary = ((positions as Array<Record<string, unknown>>) || [])
+    .map((p) =>
+      `• T${p.tier} ${p.dir} ${p.ticker} (${p.name}) — ${p.type}, fee ${p.fee}, conv ${p.conv}, corr: ${p.corr}\n  Status: ${p.status} | When: ${p.when}\n  Why: ${p.why}`
+    )
     .join("\n\n");
 
   const priceMap = prices as Record<string, { close: number; change_p: number }> | null;
@@ -161,8 +131,7 @@ Return ONLY a valid JSON object with these fields:
 {
   "allocations": [
     {"name": "Physical Gold (WGLD)", "pct": 20},
-    {"name": "Cash / Dry Powder", "pct": 10},
-    ...
+    {"name": "Cash / Dry Powder", "pct": 10}
   ],
   "reasoning": "4-6 sentences: State the regime and its key drivers. Which signals most influenced the allocation? What's the main tension or trade-off? What specific signal change would trigger a rebalance (e.g. 'if VIX crosses 30' or 'if credit spreads widen further')?"
 }
@@ -176,56 +145,53 @@ Requirements:
 - Every allocation decision must follow from the framework`;
 
   try {
-    const { result, model } = await callAI(systemPrompt, prompt, "synthesis");
+    const { result } = await callAI(systemPrompt, prompt, "synthesis");
 
-    const jsonMatch = result.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return Response.json({ error: "AI returned invalid format", raw: result }, { status: 500 });
+    const jsonString = extractJsonObject(result);
+    if (!jsonString) {
+      return Response.json({ error: "AI returned invalid format" }, { status: 500 });
+    }
+    const parsed = validateAllocation(safeParse(jsonString));
+    if (!parsed) {
+      return Response.json({ error: "AI response failed validation" }, { status: 500 });
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
     const entry: AllocationEntry = {
       date: today(),
-      allocations: parsed.allocations || [],
-      reasoning: parsed.reasoning || "",
-      model,
-      regime: regime ? {
-        regime: regime.regime,
-        overallScore: regime.overallScore,
-        signals: regime.signals,
-        summary: regime.summary,
-        deployableTiers: regime.deployableTiers,
-        equityCorrelationCap: regime.equityCorrelationCap,
-      } : undefined,
+      allocations: parsed.allocations,
+      reasoning: parsed.reasoning,
+      regime: regime
+        ? {
+            regime: regime.regime,
+            overallScore: regime.overallScore,
+            signals: regime.signals,
+            summary: regime.summary,
+            deployableTiers: regime.deployableTiers,
+            equityCorrelationCap: regime.equityCorrelationCap,
+          }
+        : undefined,
     };
 
-    // Validate allocations sum
     const total = entry.allocations.reduce((s, a) => s + (a.pct || 0), 0);
     if (total < 95 || total > 105) {
-      // AI sometimes doesn't sum to exactly 100 — normalize
       const factor = 100 / total;
       entry.allocations = entry.allocations.map((a) => ({ ...a, pct: Math.round(a.pct * factor) }));
-      // Fix rounding to exactly 100
       const newTotal = entry.allocations.reduce((s, a) => s + a.pct, 0);
       if (newTotal !== 100 && entry.allocations.length > 0) {
         entry.allocations[0].pct += 100 - newTotal;
       }
     }
 
-    // Persist to Redis
-    if (redis) {
-      try {
-        const histRaw = await redis.get(KV_ALLOCATION_HISTORY);
-        if (histRaw) history = JSON.parse(histRaw);
-        history = [...history.filter((h) => h.date !== today()), entry].slice(-90);
-        await redis.set(KV_ALLOCATION, JSON.stringify(entry));
-        await redis.set(KV_ALLOCATION_HISTORY, JSON.stringify(history));
-      } catch { /* best effort */ }
-    }
+    const history = await kvGet<AllocationEntry[]>(KV_KEYS.ALLOCATION_HISTORY, []);
+    const nextHistory = [...history.filter((h) => h.date !== today()), entry].slice(-90);
+    await kvSet(KV_KEYS.ALLOCATION, entry);
+    await kvSet(KV_KEYS.ALLOCATION_HISTORY, nextHistory);
 
-    return Response.json({ current: entry, history, cached: false });
+    return Response.json({ current: entry, history: nextHistory, cached: false });
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return Response.json({ error: message }, { status: 500 });
+    logger.error("allocation generation failed", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return Response.json({ error: "Allocation generation failed" }, { status: 500 });
   }
 }
