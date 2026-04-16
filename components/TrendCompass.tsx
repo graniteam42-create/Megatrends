@@ -44,6 +44,7 @@ export default function TrendCompass() {
   const [trends, setTrendsRaw] = useState<Trend[]>(SEED_TRENDS);
   const [scans, setScansRaw] = useState<Record<string, { result: string; ts: string; model?: string }>>({});
   const [prices, setPrices] = useState<Record<string, PriceData>>(DEFAULT_PRICES);
+  const [highs, setHighs] = useState<Record<string, number>>({});
   const [performance, setPerformance] = useState<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }>>(DEFAULT_PERFORMANCE);
   const [ready, setReady] = useState(false);
 
@@ -130,6 +131,8 @@ export default function TrendCompass() {
     if (cached && Object.keys(cached).length) setPrices({ ...DEFAULT_PRICES, ...cached });
     const cachedPerf = loadLS<Record<string, { ticker: string; perf20d: number | null; perf60d: number | null }> | null>(LS_PERF, null);
     if (cachedPerf && Object.keys(cachedPerf).length) setPerformance({ ...DEFAULT_PERFORMANCE, ...cachedPerf });
+    const cachedHighs = loadLS<Record<string, number> | null>("tc_highs", null);
+    if (cachedHighs && Object.keys(cachedHighs).length) setHighs(cachedHighs);
     try { setPricesDate(localStorage.getItem(LS_PRICES + "_date") || ""); } catch {}
   }, []);
 
@@ -162,11 +165,18 @@ export default function TrendCompass() {
           body: JSON.stringify(allForPerf),
         }),
       ]);
-      const priceData = await priceRes.json();
+      const priceResponse = await priceRes.json();
       const perfData = await perfRes.json();
+      // Handle both old format (flat price map) and new format ({ prices, highs })
+      const priceData = priceResponse.prices || priceResponse;
+      const highsData = priceResponse.highs || {};
       if (priceData && typeof priceData === "object" && !priceData.error) {
         setPrices({ ...DEFAULT_PRICES, ...priceData });
         saveLS(LS_PRICES, priceData);
+      }
+      if (highsData && Object.keys(highsData).length) {
+        setHighs(highsData);
+        saveLS("tc_highs", highsData);
       }
       if (perfData && typeof perfData === "object" && !perfData.error) {
         setPerformance({ ...DEFAULT_PERFORMANCE, ...perfData });
@@ -233,7 +243,7 @@ export default function TrendCompass() {
       <div className="px-3 sm:px-7 py-4 sm:py-6 max-w-[1400px] mx-auto">
         {tab === "landscape" && <LandscapeTab trends={trends} onSwitchTab={(t, trendId) => { setTab(t); if (trendId) setFocusTrendId(trendId); }} performance={performance} />}
         {tab === "analysis" && <AnalysisTab trends={trends} setTrends={setTrends} scans={scans} setScans={setScans} focusTrendId={focusTrendId} onFocusHandled={() => setFocusTrendId(null)} />}
-        {tab === "positions" && <PositionsTab trends={trends} prices={prices} tickerPerf={Object.fromEntries(Object.values(performance).map((p) => [p.ticker, { perf20d: p.perf20d, perf60d: p.perf60d }]))} />}
+        {tab === "positions" && <PositionsTab trends={trends} prices={prices} highs={highs} tickerPerf={Object.fromEntries(Object.values(performance).map((p) => [p.ticker, { perf20d: p.perf20d, perf60d: p.perf60d }]))} />}
         {tab === "lab" && <StrategyLabTab trends={trends} setTrends={setTrends} />}
       </div>
     </div>
