@@ -73,10 +73,11 @@ export default function LoginPage() {
         <>
           <img
             src={art.imageUrl}
-            alt={art.title}
+            alt={art.title ? `${art.title} by ${art.artist}` : "Artwork"}
             onLoad={() => setImgLoaded(true)}
             className="absolute right-0 top-0 h-full object-contain object-right"
             style={{ opacity: imgLoaded ? 1 : 0, transition: "opacity 1.5s ease-in", maxWidth: "65%" }}
+            aria-hidden="true"
           />
           {/* Soft edge blend where image meets the dark left side */}
           <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #0a0c10 30%, #0a0c10 32%, transparent 45%)" }} />
@@ -88,15 +89,26 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="bg-[#111827]/80 backdrop-blur-md border border-[#1e293b] rounded-xl p-8">
           <h1 className="text-[#00e5ff] text-xl font-bold tracking-wider mb-1">TREND COMPASS</h1>
           <p className="text-[#94a3b8] text-xs tracking-widest uppercase mb-6">Strategic Intelligence System</p>
+          <label htmlFor="tc-password" className="sr-only">
+            Password
+          </label>
           <input
+            id="tc-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
+            autoComplete="current-password"
             className="w-full px-4 py-3 bg-[#0d1117]/80 border border-[#1e293b] rounded-lg text-[#e0e4ec] text-sm outline-none focus:border-[#00e5ff] mb-4"
             autoFocus
+            aria-describedby={error ? "tc-password-error" : undefined}
+            aria-invalid={!!error}
           />
-          {error && <p className="text-[#ff1744] text-xs mb-3">{error}</p>}
+          {error && (
+            <p id="tc-password-error" role="alert" className="text-[#ff1744] text-xs mb-3">
+              {error}
+            </p>
+          )}
           <button
             type="submit"
             disabled={loading}

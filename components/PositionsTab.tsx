@@ -135,6 +135,12 @@ export default function PositionsTab({
   }, [allocation, trends.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggle = (key: string) => setExpanded((p) => ({ ...p, [key]: !p[key] }));
+  const toggleKey = (key: string) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggle(key);
+    }
+  };
 
   const statusColor = (s: string) =>
     s === "GO" ? "#00e676" : s === "APPROACHING" ? "#ffea00" : "#94a3b8";
@@ -399,7 +405,15 @@ export default function PositionsTab({
           const inZone = CRASH_WATCHLIST.filter((w) => getBuyZoneStatus(w) === "in_zone").length;
           const nearZone = CRASH_WATCHLIST.filter((w) => getBuyZoneStatus(w) === "near_zone").length;
           return (
-            <div onClick={() => toggle("crash")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-[rgba(224,64,251,0.04)] rounded-lg border border-[#4a1d8e]">
+            <div
+              role="button"
+              tabIndex={0}
+              aria-expanded={!!expanded.crash}
+              aria-controls="crash-watchlist-panel"
+              onClick={() => toggle("crash")}
+              onKeyDown={toggleKey("crash")}
+              className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-[rgba(224,64,251,0.04)] rounded-lg border border-[#4a1d8e] focus:outline-none focus:ring-2 focus:ring-[#00e5ff]"
+            >
               <div className="flex items-center gap-2.5">
                 <span className="text-sm text-[#e040fb]">{expanded.crash ? "\u25BE" : "\u25B8"}</span>
                 <h3 className="text-sm font-semibold text-[#e040fb]">Crash Watchlist</h3>
@@ -412,7 +426,7 @@ export default function PositionsTab({
           );
         })()}
         {expanded.crash && (
-          <div className="mt-2 overflow-x-auto rounded-[10px] border border-[#1e293b]">
+          <div id="crash-watchlist-panel" className="mt-2 overflow-x-auto rounded-[10px] border border-[#1e293b]">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-white/[0.03]">
@@ -475,7 +489,15 @@ export default function PositionsTab({
 
       {/* Catalysts */}
       <div className="mb-3">
-        <div onClick={() => toggle("catalysts")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={!!expanded.catalysts}
+          aria-controls="catalysts-panel"
+          onClick={() => toggle("catalysts")}
+          onKeyDown={toggleKey("catalysts")}
+          className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#00e5ff]"
+        >
           <div className="flex items-center gap-2.5">
             <span className="text-sm text-[#ff9100]">{expanded.catalysts ? "\u25BE" : "\u25B8"}</span>
             <h3 className="text-sm font-semibold text-[#ff9100]">Deployment Catalysts</h3>
@@ -484,7 +506,7 @@ export default function PositionsTab({
           <span className="text-[11px] text-[#ff9100]">Events that trigger wave transitions</span>
         </div>
         {expanded.catalysts && (
-          <div className="mt-2">
+          <div id="catalysts-panel" className="mt-2">
             {CATALYSTS.map((c, i) => (
               <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] px-3.5 py-2.5 flex gap-3 mb-1.5">
                 <Badge color="#ff9100">{c.date}</Badge>
@@ -497,7 +519,15 @@ export default function PositionsTab({
 
       {/* Core Trade */}
       <div className="mb-3">
-        <div onClick={() => toggle("core")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={!!expanded.core}
+          aria-controls="core-panel"
+          onClick={() => toggle("core")}
+          onKeyDown={toggleKey("core")}
+          className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#00e5ff]"
+        >
           <div className="flex items-center gap-2.5">
             <span className="text-sm text-[#00e676]">{expanded.core ? "\u25BE" : "\u25B8"}</span>
             <h3 className="text-sm font-semibold text-[#00e676]">Core Trade Structure</h3>
@@ -505,7 +535,7 @@ export default function PositionsTab({
           <span className="text-[11px] text-[#00e676]">Long Hard Assets vs. Short Bonds</span>
         </div>
         {expanded.core && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+          <div id="core-panel" className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             {TRADE_LEGS.map((l, i) => {
               const lc = l.side === "LONG" ? "#00e676" : "#ff1744";
               return (
@@ -522,7 +552,15 @@ export default function PositionsTab({
 
       {/* Key Frameworks */}
       <div className="mb-3">
-        <div onClick={() => toggle("frameworks")} className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b]">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={!!expanded.frameworks}
+          aria-controls="frameworks-panel"
+          onClick={() => toggle("frameworks")}
+          onKeyDown={toggleKey("frameworks")}
+          className="flex justify-between items-center cursor-pointer px-3.5 py-2.5 bg-white/[0.02] rounded-lg border border-[#1e293b] focus:outline-none focus:ring-2 focus:ring-[#00e5ff]"
+        >
           <div className="flex items-center gap-2.5">
             <span className="text-sm text-[#94a3b8]">{expanded.frameworks ? "\u25BE" : "\u25B8"}</span>
             <h3 className="text-sm font-semibold text-[#94a3b8]">Key Frameworks</h3>
@@ -530,7 +568,7 @@ export default function PositionsTab({
           </div>
         </div>
         {expanded.frameworks && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+          <div id="frameworks-panel" className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
             {KEY_CONCEPTS.map((k, i) => (
               <div key={i} className="bg-gradient-to-br from-[#111827] to-[#0f1623] border border-[#1e293b] rounded-[10px] px-3 py-2.5">
                 <h4 className="text-xs font-semibold mb-1">{k.name}</h4>

@@ -1,6 +1,7 @@
 import { SEED_TRENDS } from "@/lib/seed-data";
 import { TICKER_MAP } from "@/lib/ticker-map";
 import { fetchHistoricalPerformance } from "@/lib/eodhd";
+import { logger } from "@/lib/logger";
 import type { Trend } from "@/lib/types";
 
 function extractMainTicker(investmentMap: string): string | null {
@@ -10,10 +11,7 @@ function extractMainTicker(investmentMap: string): string | null {
 }
 
 function getTicker(trend: Trend): string | null {
-  // Prefer explicit benchmarkTicker (even if not in TICKER_MAP — EODHD will try .US)
-  if (trend.benchmarkTicker) {
-    return trend.benchmarkTicker;
-  }
+  if (trend.benchmarkTicker) return trend.benchmarkTicker;
   return extractMainTicker(trend.investmentMap);
 }
 
@@ -24,40 +22,38 @@ async function computePerformance(trends: Trend[]) {
     .map((t) => ({ id: t.id, ticker: getTicker(t) }))
     .filter((e): e is { id: string; ticker: string } => e.ticker !== null);
 
-  for (let i = 0; i < entries.length; i += 3) {
-    const batch = entries.slice(i, i + 3);
-    await Promise.all(
-      batch.map(async ({ id, ticker }) => {
-        const [perf20d, perf60d] = await Promise.all([
-          fetchHistoricalPerformance(ticker, 20),
-          fetchHistoricalPerformance(ticker, 60),
-        ]);
-        results[id] = { ticker, perf20d, perf60d };
-      })
-    );
-  }
+  // All trend fetches run concurrently. fetchHistoricalPerformance already
+  // caches via Next's revalidate, so this is bounded by EODHD's limits but
+  // dramatically faster than the previous batch-of-3 loop.
+  await Promise.all(
+    entries.map(async ({ id, ticker }) => {
+      const [perf20d, perf60d] = await Promise.all([
+        fetchHistoricalPerformance(ticker, 20),
+        fetchHistoricalPerformance(ticker, 60),
+      ]);
+      results[id] = { ticker, perf20d, perf60d };
+    })
+  );
 
   return results;
 }
 
-// GET: Compute performance for seed trends only (backward compat)
 export async function GET() {
   const results = await computePerformance(SEED_TRENDS);
   return Response.json(results);
 }
 
-// POST: Compute performance for ALL provided trends (including user-added)
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const trends: Trend[] = Array.isArray(body) ? body : body.trends;
-    if (!trends || !trends.length) {
-      return Response.json({});
-    }
+    if (!trends || !trends.length) return Response.json({});
     const results = await computePerformance(trends);
     return Response.json(results);
-  } catch {
-    // Fall back to seed trends on parse error
+  } catch (e) {
+    logger.warn("performance POST parse failed, falling back to seed", {
+      error: e instanceof Error ? e.message : String(e),
+    });
     const results = await computePerformance(SEED_TRENDS);
     return Response.json(results);
   }
