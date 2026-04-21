@@ -59,19 +59,25 @@ export function PieChart({ allocations }: { allocations: Allocation[] }) {
 
   // Sort by pct descending for better visual
   const sorted = [...allocations].sort((a, b) => b.pct - a.pct);
-  let cumulative = 0;
+
+  // Pre-compute cumulative offsets so the map callback is pure (no closure
+  // mutation — React 19 strict mode flags that pattern).
+  const offsets: number[] = [];
+  {
+    let acc = 0;
+    for (const a of sorted) {
+      offsets.push(acc);
+      acc += a.pct;
+    }
+  }
 
   const slices = sorted.map((a, i) => {
-    const startAngle = (cumulative / 100) * 2 * Math.PI - Math.PI / 2;
-    cumulative += a.pct;
-    const endAngle = (cumulative / 100) * 2 * Math.PI - Math.PI / 2;
+    const start = offsets[i];
+    const end = start + a.pct;
+    const startAngle = (start / 100) * 2 * Math.PI - Math.PI / 2;
+    const endAngle = (end / 100) * 2 * Math.PI - Math.PI / 2;
     const largeArc = a.pct > 50 ? 1 : 0;
     const color = a.color || getSliceColor(i, a.name);
-
-    const x1 = cx + r * Math.cos(startAngle);
-    const y1 = cy + r * Math.sin(startAngle);
-    const x2 = cx + r * Math.cos(endAngle);
-    const y2 = cy + r * Math.sin(endAngle);
 
     // Label position at midpoint of arc
     const midAngle = (startAngle + endAngle) / 2;
