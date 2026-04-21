@@ -26,6 +26,35 @@ function today(): string {
   return new Date().toISOString().split("T")[0];
 }
 
+// Legacy trends (pre-2026-04-21) sometimes stored investmentMap as an array
+// of {ticker, position} objects returned by the AI. Normalize to string on
+// load so old localStorage data no longer crashes React.
+function coerceInvestmentMap(raw: unknown): string {
+  if (raw == null) return "";
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw)) {
+    return raw
+      .map((e) => {
+        if (typeof e === "string") return e;
+        if (e && typeof e === "object") {
+          const o = e as Record<string, unknown>;
+          const ticker = o.ticker || o.symbol || o.name;
+          const position = o.position || o.side || o.direction;
+          if (ticker && position) return `${position}: ${ticker}`;
+          if (ticker) return String(ticker);
+          return JSON.stringify(e);
+        }
+        return String(e);
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (typeof raw === "object") {
+    try { return JSON.stringify(raw); } catch { return ""; }
+  }
+  return String(raw);
+}
+
 function loadLS<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
@@ -84,12 +113,22 @@ export default function TrendCompass() {
     const lsScans = loadLS<Record<string, { result: string; ts: string; model?: string }> | null>(LS_SCANS, null);
 
     if (lsTrends && lsTrends.length) {
-      // Migrate: auto-populate benchmarkTicker for trends that don't have one
+      // Migrate legacy trends:
+      // 1. Coerce investmentMap to string (AI sometimes returned structured JSON,
+      //    which crashed React #31 when rendered as a child).
+      // 2. Auto-populate benchmarkTicker if missing.
       const migrated = lsTrends.map((t: Trend) => {
-        if (!t.benchmarkTicker && t.investmentMap) {
-          return { ...t, benchmarkTicker: extractBenchmarkTicker(t.investmentMap) };
+        const next: Trend = { ...t };
+        if (next.investmentMap != null && typeof next.investmentMap !== "string") {
+          next.investmentMap = coerceInvestmentMap(next.investmentMap);
         }
-        return t;
+        if (!Array.isArray(next.subTrends)) {
+          next.subTrends = [];
+        }
+        if (!next.benchmarkTicker && typeof next.investmentMap === "string") {
+          next.benchmarkTicker = extractBenchmarkTicker(next.investmentMap);
+        }
+        return next;
       });
       setTrendsRaw(migrated);
       saveLS(LS_TRENDS, migrated);
@@ -100,8 +139,16 @@ export default function TrendCompass() {
         .then((r) => r.json())
         .then((serverTrends) => {
           if (Array.isArray(serverTrends) && serverTrends.length) {
-            setTrendsRaw(serverTrends);
-            saveLS(LS_TRENDS, serverTrends);
+            const migrated = serverTrends.map((t: Trend) => {
+              const next: Trend = { ...t };
+              if (next.investmentMap != null && typeof next.investmentMap !== "string") {
+                next.investmentMap = coerceInvestmentMap(next.investmentMap);
+              }
+              if (!Array.isArray(next.subTrends)) next.subTrends = [];
+              return next;
+            });
+            setTrendsRaw(migrated);
+            saveLS(LS_TRENDS, migrated);
           }
         })
         .catch(() => {})
