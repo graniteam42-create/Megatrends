@@ -42,17 +42,37 @@ export default function AnalysisTab({
   const empty = { name: "", stage: 0, horizon: "2-5 years", confidence: 50, description: "", subTrends: "", thesis: "", bearCase: "", investmentMap: "", mispricingScore: 50, benchmarkTicker: "" };
   const [nf, setNf] = useState(empty);
 
-  // Scroll to focused trend when navigating from Landscape
+  // Scroll to focused trend when navigating from Landscape.
+  // Wrapped in try/catch + rAF because scrollIntoView can throw in some
+  // browsers/contexts, and the target may not be in the DOM yet on remount.
   useEffect(() => {
-    if (focusTrendId) {
-      const el = document.getElementById(`trend-${focusTrendId}`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.style.outline = "2px solid #00e5ff";
-        setTimeout(() => { el.style.outline = ""; }, 2000);
+    if (!focusTrendId) return;
+    const id = focusTrendId;
+    const run = () => {
+      try {
+        const el = document.getElementById(`trend-${id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.style.outline = "2px solid #00e5ff";
+          setTimeout(() => {
+            try { el.style.outline = ""; } catch { /* ignore */ }
+          }, 2000);
+        }
+      } catch {
+        /* swallow — focus is a UX nicety, never a hard failure */
       }
       onFocusHandled?.();
-    }
+    };
+    const raf = typeof window !== "undefined" && window.requestAnimationFrame
+      ? window.requestAnimationFrame(run)
+      : (setTimeout(run, 0) as unknown as number);
+    return () => {
+      if (typeof window !== "undefined" && window.cancelAnimationFrame) {
+        window.cancelAnimationFrame(raf);
+      } else {
+        clearTimeout(raf);
+      }
+    };
   }, [focusTrendId, onFocusHandled]);
 
   // Scan modal state

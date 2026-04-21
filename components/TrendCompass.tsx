@@ -8,6 +8,7 @@ import LandscapeTab from "./LandscapeTab";
 import AnalysisTab from "./AnalysisTab";
 import PositionsTab from "./PositionsTab";
 import StrategyLabTab from "./StrategyLabTab";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 const TABS = [
   { id: "landscape", label: "Landscape" },
@@ -241,10 +242,26 @@ export default function TrendCompass() {
 
       {/* Content */}
       <div className="px-3 sm:px-7 py-4 sm:py-6 max-w-[1400px] mx-auto">
-        {tab === "landscape" && <LandscapeTab trends={trends} onSwitchTab={(t, trendId) => { setTab(t); if (trendId) setFocusTrendId(trendId); }} performance={performance} />}
-        {tab === "analysis" && <AnalysisTab trends={trends} setTrends={setTrends} scans={scans} setScans={setScans} focusTrendId={focusTrendId} onFocusHandled={() => setFocusTrendId(null)} />}
-        {tab === "positions" && <PositionsTab trends={trends} prices={prices} highs={highs} tickerPerf={Object.fromEntries(Object.values(performance).map((p) => [p.ticker, { perf20d: p.perf20d, perf60d: p.perf60d }]))} />}
-        {tab === "lab" && <StrategyLabTab trends={trends} setTrends={setTrends} />}
+        {tab === "landscape" && (
+          <ErrorBoundary label="Landscape">
+            <LandscapeTab trends={trends} onSwitchTab={(t, trendId) => { setTab(t); if (trendId) setFocusTrendId(trendId); }} performance={performance} />
+          </ErrorBoundary>
+        )}
+        {tab === "analysis" && (
+          <ErrorBoundary label="Analysis">
+            <AnalysisTab trends={trends} setTrends={setTrends} scans={scans} setScans={setScans} focusTrendId={focusTrendId} onFocusHandled={() => setFocusTrendId(null)} />
+          </ErrorBoundary>
+        )}
+        {tab === "positions" && (
+          <ErrorBoundary label="Positions">
+            <PositionsTab trends={trends} prices={prices} highs={highs} tickerPerf={Object.fromEntries(Object.values(performance).map((p) => [p.ticker, { perf20d: p.perf20d, perf60d: p.perf60d }]))} />
+          </ErrorBoundary>
+        )}
+        {tab === "lab" && (
+          <ErrorBoundary label="Strategy Lab">
+            <StrategyLabTab trends={trends} setTrends={setTrends} />
+          </ErrorBoundary>
+        )}
       </div>
     </div>
   );
