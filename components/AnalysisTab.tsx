@@ -18,6 +18,60 @@ function parseAIJson(text: string) {
   return JSON.parse(clean);
 }
 
+/**
+ * AI responses occasionally return investmentMap as an array of
+ * `{ticker, position}` objects (or similar structured shape) instead of a
+ * plain string. Storing that and rendering it triggers React #31.
+ * Normalize anything we didn't ask for into a human-readable string.
+ */
+function normalizeInvestmentMap(raw: unknown): string {
+  if (raw == null) return "";
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw)) {
+    return raw
+      .map((entry) => {
+        if (typeof entry === "string") return entry;
+        if (entry && typeof entry === "object") {
+          const o = entry as Record<string, unknown>;
+          const ticker = o.ticker || o.symbol || o.name;
+          const position = o.position || o.side || o.direction;
+          if (ticker && position) return `${position}: ${ticker}`;
+          if (ticker) return String(ticker);
+          return JSON.stringify(entry);
+        }
+        return String(entry);
+      })
+      .filter(Boolean)
+      .join(", ");
+  }
+  if (typeof raw === "object") {
+    // Handle { Long: [...], Short: [...] } shapes too.
+    try {
+      return Object.entries(raw as Record<string, unknown>)
+        .map(([k, v]) => {
+          if (Array.isArray(v)) return `${k}: ${v.join(", ")}`;
+          return `${k}: ${String(v)}`;
+        })
+        .join(". ");
+    } catch {
+      return "";
+    }
+  }
+  return String(raw);
+}
+
+/** Coerce any value to a safe renderable string. */
+function asSafeString(raw: unknown, fallback = ""): string {
+  if (raw == null) return fallback;
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "number" || typeof raw === "boolean") return String(raw);
+  if (Array.isArray(raw)) return raw.map((x) => asSafeString(x)).filter(Boolean).join(", ");
+  if (typeof raw === "object") {
+    try { return JSON.stringify(raw); } catch { return fallback; }
+  }
+  return fallback;
+}
+
 export default function AnalysisTab({
   trends,
   setTrends,
@@ -96,12 +150,15 @@ export default function AnalysisTab({
   }
 
   async function addTrend() {
-    const investMap = typeof nf.investmentMap === "string" ? nf.investmentMap : "";
+    const investMap = normalizeInvestmentMap(nf.investmentMap);
     const trendId = "t" + Date.now();
     const newTrend = {
       ...nf,
       id: trendId,
-      subTrends: nf.subTrends.split(",").map((x: string) => x.trim()).filter(Boolean),
+      investmentMap: investMap,
+      subTrends: typeof nf.subTrends === "string"
+        ? nf.subTrends.split(",").map((x: string) => x.trim()).filter(Boolean)
+        : [],
       signals: [],
       confidence: +nf.confidence,
       stage: +nf.stage,
@@ -136,16 +193,16 @@ export default function AnalysisTab({
       const parsed = parseAIJson(data.result);
       setNf({
         name: nf.name,
-        description: parsed.description || "",
-        thesis: parsed.thesis || "",
-        bearCase: parsed.bearCase || "",
-        investmentMap: parsed.investmentMap || "",
+        description: asSafeString(parsed.description),
+        thesis: asSafeString(parsed.thesis),
+        bearCase: asSafeString(parsed.bearCase),
+        investmentMap: normalizeInvestmentMap(parsed.investmentMap),
         confidence: parsed.confidence ?? 50,
         mispricingScore: parsed.mispricingScore ?? 50,
-        subTrends: Array.isArray(parsed.subTrends) ? parsed.subTrends.join(", ") : (parsed.subTrends || ""),
+        subTrends: Array.isArray(parsed.subTrends) ? parsed.subTrends.join(", ") : asSafeString(parsed.subTrends),
         stage: parsed.stage ?? 0,
-        horizon: parsed.horizon || "2-5 years",
-        benchmarkTicker: parsed.benchmarkTicker || "",
+        horizon: asSafeString(parsed.horizon, "2-5 years"),
+        benchmarkTicker: asSafeString(parsed.benchmarkTicker),
       });
 
       // Now get assessment
@@ -451,12 +508,12 @@ export default function AnalysisTab({
               <div key={i} className="bg-[#0d1117] border border-[#1e293b] rounded-lg p-4 flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-[15px] font-semibold text-[#e0e4ec]">{s.name}</span>
+                    <span className="text-[15px] font-semibold text-[#e0e4ec]">{asSafeString(s.name, "Untitled")}</span>
                     {s.stage !== undefined && (
                       <Badge color={STAGE_COLORS[s.stage] || "#94a3b8"}>{STAGES[s.stage] || "Unknown"}</Badge>
                     )}
                   </div>
-                  <p className="text-[13px] text-[#94a3b8] leading-relaxed mb-2">{s.description}</p>
+                  <p className="text-[13px] text-[#94a3b8] leading-relaxed mb-2">{asSafeString(s.description)}</p>
                   <div className="flex gap-4 text-[11px] font-mono">
                     {s.confidence !== undefined && (
                       <span className="text-[#00e5ff]">Confidence: {s.confidence}%</span>
@@ -469,23 +526,27 @@ export default function AnalysisTab({
                 <button
                   className="px-3 py-1.5 rounded-md bg-[#00e676] text-[#0a0c10] text-[12px] font-semibold font-mono flex-shrink-0"
                   onClick={() => {
-                    const investMap = s.investmentMap || "";
+                    const investMap = normalizeInvestmentMap(s.investmentMap);
                     const trendId = "t" + Date.now();
-                    const trendName = s.name || "Untitled";
+                    const trendName = asSafeString(s.name, "Untitled");
+                    const rawBenchmark = (s as Record<string, unknown>).benchmarkTicker;
+                    const benchmarkTicker = asSafeString(rawBenchmark) || extractBenchmarkTicker(investMap);
                     const newTrend: Trend = {
                       id: trendId,
                       name: trendName,
-                      description: s.description || "",
-                      thesis: s.thesis || "",
-                      bearCase: s.bearCase || "",
+                      description: asSafeString(s.description),
+                      thesis: asSafeString(s.thesis),
+                      bearCase: asSafeString(s.bearCase),
                       investmentMap: investMap,
                       confidence: s.confidence ?? 50,
                       mispricingScore: s.mispricingScore ?? 50,
-                      subTrends: Array.isArray(s.subTrends) ? s.subTrends : [],
+                      subTrends: Array.isArray(s.subTrends)
+                        ? s.subTrends.map((x) => asSafeString(x)).filter(Boolean)
+                        : [],
                       stage: s.stage ?? 0,
-                      horizon: s.horizon || "2-5 years",
+                      horizon: asSafeString(s.horizon, "2-5 years"),
                       signals: [],
-                      benchmarkTicker: (s as Record<string, unknown>).benchmarkTicker as string || extractBenchmarkTicker(investMap),
+                      benchmarkTicker,
                     };
                     setTrends((p) => [...p, newTrend]);
                     fetchTrendImage(trendName).then((img) => {
@@ -572,12 +633,18 @@ export default function AnalysisTab({
                 <p className="text-[13px] text-[#94a3b8] leading-relaxed italic">{t.bearCase}</p>
               </div>
             )}
-            {t.investmentMap && (
-              <div className="mt-2 px-3.5 py-2.5 bg-[rgba(0,230,118,0.04)] rounded-md border-l-[3px] border-l-[#00e676]">
-                <span className="text-[11px] text-[#00e676] uppercase tracking-widest font-mono block mb-1">Investment Map</span>
-                <p className="text-[13px] text-[#cbd5e1] leading-relaxed">{t.investmentMap}</p>
-              </div>
-            )}
+            {(() => {
+              // Belt-and-braces: legacy trends in localStorage may have a non-string
+              // investmentMap (AI sometimes returns structured JSON). Coerce here.
+              const investmentMapText = normalizeInvestmentMap(t.investmentMap);
+              if (!investmentMapText) return null;
+              return (
+                <div className="mt-2 px-3.5 py-2.5 bg-[rgba(0,230,118,0.04)] rounded-md border-l-[3px] border-l-[#00e676]">
+                  <span className="text-[11px] text-[#00e676] uppercase tracking-widest font-mono block mb-1">Investment Map</span>
+                  <p className="text-[13px] text-[#cbd5e1] leading-relaxed">{investmentMapText}</p>
+                </div>
+              );
+            })()}
             {relConv.length > 0 && (
               <div className="mt-3">
                 <span className="text-[11px] text-[#c084fc] uppercase tracking-widest font-mono block mb-2">Convergence Zones</span>
